@@ -649,7 +649,7 @@ const ReportDocument: React.FC<PDFDocProps> = ({ reportData, marketData }) => {
               • Boligprisindeks Italia: Eurostat PRC_HPI_A – ec.europa.eu/eurostat
             </Text>
             <Text style={styles.sourceItem}>
-              • Toscana markedsdata: Banca d'Italia – bancaditalia.it (manuell inndata)
+              {"• Toscana markedsdata: Banca d'Italia – bancaditalia.it (manuell inndata)"}
             </Text>
             <Text style={styles.sourceItem}>
               • Eiendommer: Kämpe Estates Notion-database (ID: 33b1573c-e82d-80e6-ae7e-f008c4a26fa6)
@@ -676,9 +676,6 @@ export async function generatePDF(
     ReportDocument,
     { reportData, marketData }
   );
-  // Cast is required because renderToBuffer expects ReactElement<DocumentProps>
-  // but ReportDocument wraps Document so it is compatible at runtime
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buffer = await renderToBuffer(doc as any);
   return new Uint8Array(buffer);
 }

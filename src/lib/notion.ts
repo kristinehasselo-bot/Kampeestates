@@ -11,13 +11,11 @@ function getNotionClient(): Client {
   return new Client({ auth: apiKey });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractPlainText(richTextArray: any[]): string {
   if (!Array.isArray(richTextArray) || richTextArray.length === 0) return '';
   return richTextArray.map((rt: { plain_text?: string }) => rt.plain_text || '').join('');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapNotionPageToProperty(page: any): NotionProperty {
   const props = page.properties || {};
 

@@ -242,7 +242,7 @@ export default function MarketDataSection({
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            Toscana markedsdata (Banca d'Italia)
+            {"Toscana markedsdata (Banca d'Italia)"}
           </h3>
           <DataStatusBadge status="manual" compact label="Manuell inndata" />
         </div>
@@ -282,7 +282,7 @@ export default function MarketDataSection({
               rel="noopener noreferrer"
               className="underline hover:text-brand-burgundy transition-colors"
             >
-              Banca d'Italia – Statistikk
+              {"Banca d'Italia – Statistikk"}
             </a>
           </p>
         </div>
