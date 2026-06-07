@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MarketData, ReportData, ArchiveEntry } from '@/types';
-import MarketDataSection from './MarketDataSection';
+import MarketDataSection, { PropertyPrices } from './MarketDataSection';
 import ReportEditor from './ReportEditor';
 import GenerateButton from './GenerateButton';
 import NewsSection from './NewsSection';
@@ -57,16 +57,23 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
   const [manualEurNok, setManualEurNok] = useState('');
   const [manualHPI, setManualHPI] = useState('');
   const [manualTuscanyPrice, setManualTuscanyPrice] = useState('');
+  const [propertyPrices, setPropertyPrices] = useState<PropertyPrices>({
+    villa: '', apartment: '', rustico: '', farm: '',
+  });
 
-  // Sync manual data back into reportData for PDF generation
+  // Sync manual data back into reportData for PDF generation and draft templates
   const syncManualData = useCallback(
-    (eurNok: string, hpi: string, tuscany: string) => {
+    (eurNok: string, hpi: string, tuscany: string, pp: PropertyPrices) => {
       setReportData((prev) => ({
         ...prev,
         manualData: {
           eurNok: eurNok ? parseFloat(eurNok) : undefined,
           italyHPI: hpi ? parseFloat(hpi) : undefined,
           tuscanyAvgPrice: tuscany ? parseFloat(tuscany) : undefined,
+          tuscanyVilla: pp.villa ? parseFloat(pp.villa) : undefined,
+          tuscanyApartment: pp.apartment ? parseFloat(pp.apartment) : undefined,
+          tuscanyRustico: pp.rustico ? parseFloat(pp.rustico) : undefined,
+          tuscanyFarm: pp.farm ? parseFloat(pp.farm) : undefined,
         },
       }));
     },
@@ -75,17 +82,22 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
 
   const handleManualEurNokChange = (value: string) => {
     setManualEurNok(value);
-    syncManualData(value, manualHPI, manualTuscanyPrice);
+    syncManualData(value, manualHPI, manualTuscanyPrice, propertyPrices);
   };
 
   const handleManualHPIChange = (value: string) => {
     setManualHPI(value);
-    syncManualData(manualEurNok, value, manualTuscanyPrice);
+    syncManualData(manualEurNok, value, manualTuscanyPrice, propertyPrices);
   };
 
   const handleManualTuscanyPriceChange = (value: string) => {
     setManualTuscanyPrice(value);
-    syncManualData(manualEurNok, manualHPI, value);
+    syncManualData(manualEurNok, manualHPI, value, propertyPrices);
+  };
+
+  const handlePropertyPricesChange = (pp: PropertyPrices) => {
+    setPropertyPrices(pp);
+    syncManualData(manualEurNok, manualHPI, manualTuscanyPrice, pp);
   };
 
   const handleRefreshData = async () => {
@@ -375,9 +387,11 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                     manualEurNok={manualEurNok}
                     manualHPI={manualHPI}
                     manualTuscanyPrice={manualTuscanyPrice}
+                    propertyPrices={propertyPrices}
                     onManualEurNokChange={handleManualEurNokChange}
                     onManualHPIChange={handleManualHPIChange}
                     onManualTuscanyPriceChange={handleManualTuscanyPriceChange}
+                    onPropertyPricesChange={handlePropertyPricesChange}
                   />
                   <NewsSection />
                 </>

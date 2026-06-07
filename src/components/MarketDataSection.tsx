@@ -3,14 +3,23 @@
 import { MarketData } from '@/types';
 import DataStatusBadge from './DataStatusBadge';
 
+export interface PropertyPrices {
+  villa: string;
+  apartment: string;
+  rustico: string;
+  farm: string;
+}
+
 interface MarketDataSectionProps {
   marketData: MarketData;
   manualEurNok: string;
   manualHPI: string;
   manualTuscanyPrice: string;
+  propertyPrices: PropertyPrices;
   onManualEurNokChange: (value: string) => void;
   onManualHPIChange: (value: string) => void;
   onManualTuscanyPriceChange: (value: string) => void;
+  onPropertyPricesChange: (prices: PropertyPrices) => void;
 }
 
 function StatCard({
@@ -53,9 +62,11 @@ export default function MarketDataSection({
   manualEurNok,
   manualHPI,
   manualTuscanyPrice,
+  propertyPrices,
   onManualEurNokChange,
   onManualHPIChange,
   onManualTuscanyPriceChange,
+  onPropertyPricesChange,
 }: MarketDataSectionProps) {
   const { eurNok, italyHPI, tuscanyData } = marketData;
 
@@ -235,53 +246,83 @@ export default function MarketDataSection({
       <hr className="divider" />
 
       {/* ── Tuscany data section ── */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            {"Toscana markedsdata (Banca d'Italia)"}
+            Toscana markedsdata – priser per eiendomstype (EUR/kvm)
           </h3>
           <DataStatusBadge status="manual" compact label="Manuell inndata" />
         </div>
         <DataStatusBadge
           status="manual"
-          message="Banca d'Italia tilbyr ikke et offentlig API for regionale boligprisdata. Gå til bancaditalia.it og hent siste tall for Toscana manuelt."
+          message="Legg inn snittpriser fra OMI (Agenzia delle Entrate) eller Banca d'Italia. Klikk kildelenkene nedenfor for å hente siste tall."
         />
+
+        {/* Average / overall */}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
-            Gjennomsnittspris per kvm i Toscana (EUR)
+            Toscana gjennomsnitt alle typer (EUR/kvm)
           </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
               step="100"
               min="0"
-              placeholder="f.eks. 3200"
+              placeholder="f.eks. 2800"
               value={manualTuscanyPrice}
               onChange={(e) => onManualTuscanyPriceChange(e.target.value)}
               className="input-field max-w-xs"
             />
             {manualTuscanyPrice && (
-              <button
-                type="button"
-                onClick={() => onManualTuscanyPriceChange('')}
-                className="text-xs text-brand-text-muted hover:text-brand-burgundy transition-colors font-inter"
-              >
+              <button type="button" onClick={() => onManualTuscanyPriceChange('')}
+                className="text-xs text-brand-text-muted hover:text-brand-burgundy transition-colors font-inter">
                 Tilbakestill
               </button>
             )}
           </div>
-          <p className="text-xs text-brand-text-muted mt-1 font-inter">
-            Kilde:{' '}
-            <a
-              href="https://www.bancaditalia.it/statistiche/tematiche/moneta-credito-liquidita/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-brand-burgundy transition-colors"
-            >
-              {"Banca d'Italia – Statistikk"}
-            </a>
-          </p>
         </div>
+
+        {/* Property types grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {([
+            { key: 'villa' as const, label: 'Villa / Luksusbolig', placeholder: 'f.eks. 4500' },
+            { key: 'apartment' as const, label: 'Leilighet / Appartamento', placeholder: 'f.eks. 2200' },
+            { key: 'rustico' as const, label: 'Rustico / Casale', placeholder: 'f.eks. 2600' },
+            { key: 'farm' as const, label: 'Tenuta / Agriturismo', placeholder: 'f.eks. 1800' },
+          ] as const).map(({ key, label, placeholder }) => (
+            <div key={key}>
+              <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
+                {label} (EUR/kvm)
+              </label>
+              <input
+                type="number"
+                step="50"
+                min="0"
+                placeholder={placeholder}
+                value={propertyPrices[key]}
+                onChange={(e) =>
+                  onPropertyPricesChange({ ...propertyPrices, [key]: e.target.value })
+                }
+                className="input-field w-full"
+              />
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-brand-text-muted font-inter leading-relaxed">
+          Kilder:{' '}
+          <a href="https://www.agenziaentrate.gov.it/portale/web/guest/schede/fabbricati-e-terreni/omi-osservatorio-mercato-immobiliare"
+            target="_blank" rel="noopener noreferrer"
+            className="underline hover:text-brand-burgundy transition-colors">
+            OMI – Osservatorio Mercato Immobiliare
+          </a>
+          {' · '}
+          <a href="https://www.bancaditalia.it/statistiche/tematiche/moneta-credito-liquidita/index.html"
+            target="_blank" rel="noopener noreferrer"
+            className="underline hover:text-brand-burgundy transition-colors">
+            {"Banca d'Italia"}
+          </a>
+        </p>
       </div>
 
     </div>

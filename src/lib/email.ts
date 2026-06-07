@@ -55,7 +55,7 @@ export async function sendReportEmail(params: {
       </div>
       <div style="background: #4B1F26; padding: 12px 32px;">
         <p style="color: rgba(255,255,255,0.6); font-family: Arial, sans-serif; font-size: 11px; margin: 0;">
-          Kämpe Estates · Konfidensielt dokument
+          Kämpe Estates · Kristine Hasselø · Konfidensielt dokument
         </p>
       </div>
     </div>

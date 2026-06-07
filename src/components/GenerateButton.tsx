@@ -58,15 +58,27 @@ export default function GenerateButton({ reportData, marketData }: GenerateButto
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
 
+    // Open the window SYNCHRONOUSLY before any async work — browsers block
+    // window.open() called after await, treating it as a non-user-initiated popup.
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+      setError('Nettleseren blokkerte forhåndsvisning. Tillat popup-vinduer for dette nettstedet i adressefeltet og prøv igjen.');
+      return;
+    }
+    previewWindow.document.write(
+      '<html><body style="font-family:sans-serif;padding:2rem;color:#555">' +
+      '<p>Genererer PDF-forhåndsvisning…</p></body></html>'
+    );
+
     setIsPreviewing(true);
     try {
       const result = await fetchPdfBlob();
-      if (!result) return;
+      if (!result) { previewWindow.close(); return; }
       const url = URL.createObjectURL(result.blob);
-      window.open(url, '_blank');
-      // Keep the URL alive for a few minutes so the tab can load it
+      previewWindow.location.href = url;
       setTimeout(() => URL.revokeObjectURL(url), 120000);
     } catch (err) {
+      previewWindow.close();
       setError(err instanceof Error ? err.message : 'Feil ved forhåndsvisning.');
     } finally {
       setIsPreviewing(false);

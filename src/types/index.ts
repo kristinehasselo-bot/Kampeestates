@@ -86,5 +86,9 @@ export interface ReportData {
     eurNok?: number;
     italyHPI?: number;
     tuscanyAvgPrice?: number;
+    tuscanyVilla?: number;
+    tuscanyApartment?: number;
+    tuscanyRustico?: number;
+    tuscanyFarm?: number;
   };
 }
