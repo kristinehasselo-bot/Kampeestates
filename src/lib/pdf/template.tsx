@@ -10,8 +10,7 @@ import {
 } from '@react-pdf/renderer';
 import { ReportData, MarketData } from '@/types';
 
-// Register fonts - using standard PDF fonts for reliability
-// Helvetica and Times-Roman are built into PDF spec
+// Register fonts - using standard built-in PDF fonts for reliability
 Font.registerHyphenationCallback((word) => [word]);
 
 const BURGUNDY = '#4B1F26';
@@ -33,7 +32,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: TEXT_PRIMARY,
   },
-  // Header bar
   headerBar: {
     backgroundColor: BURGUNDY,
     paddingVertical: 18,
@@ -54,7 +52,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     letterSpacing: 1,
   },
-  // Title section
   titleSection: {
     paddingHorizontal: 48,
     paddingTop: 36,
@@ -92,7 +89,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: TEXT_SECONDARY,
   },
-  // Market data summary strip
   dataStrip: {
     backgroundColor: BG_SECONDARY,
     paddingHorizontal: 48,
@@ -133,12 +129,10 @@ const styles = StyleSheet.create({
     backgroundColor: LINE_PRIMARY,
     marginHorizontal: 8,
   },
-  // Content area
   content: {
     paddingHorizontal: 48,
     paddingTop: 32,
   },
-  // Section styling
   section: {
     marginBottom: 28,
   },
@@ -174,7 +168,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     lineHeight: 1.65,
   },
-  // Properties table
   tableSection: {
     marginBottom: 28,
   },
@@ -183,7 +176,6 @@ const styles = StyleSheet.create({
     backgroundColor: BURGUNDY,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    marginBottom: 0,
   },
   tableHeaderCell: {
     fontFamily: 'Helvetica-Bold',
@@ -214,7 +206,6 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     flex: 1,
   },
-  // Sources
   sourcesSection: {
     marginTop: 16,
     paddingTop: 16,
@@ -236,7 +227,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     lineHeight: 1.4,
   },
-  // Footer
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -267,21 +257,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'right',
   },
-  // Page divider
-  divider: {
-    height: 1,
-    backgroundColor: LINE_SECONDARY,
-    marginVertical: 20,
-    marginHorizontal: 48,
-  },
-  // Olive accent bar
-  accentBar: {
-    height: 3,
-    backgroundColor: OLIVE,
-    width: 32,
-    marginBottom: 16,
-  },
-  // Emphasis box
   emphasisBox: {
     backgroundColor: BG_SECONDARY,
     borderLeftWidth: 3,
@@ -296,7 +271,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     lineHeight: 1.6,
   },
-  // Inline data callout
   dataCallout: {
     flexDirection: 'row',
     gap: 16,
@@ -329,17 +303,7 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
     marginTop: 2,
   },
-  manualNote: {
-    fontFamily: 'Helvetica-Oblique',
-    fontSize: 8,
-    color: TEXT_MUTED,
-  },
 });
-
-interface PDFTemplateProps {
-  reportData: ReportData;
-  marketData: MarketData;
-}
 
 function formatDate(dateStr: string): string {
   try {
@@ -356,67 +320,119 @@ function formatDate(dateStr: string): string {
 
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) return '–';
-  return new Intl.NumberFormat('nb-NO', {
-    style: 'decimal',
-    maximumFractionDigits: 0,
-  }).format(price) + ' ' + currency;
+  return new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(price) + ' ' + currency;
 }
 
-function getEffectiveEurNok(reportData: ReportData, marketData: MarketData): string {
-  const value = reportData.manualData?.eurNok ?? marketData.eurNok.data?.rate;
-  if (value == null) return 'Ikke tilgjengelig';
-  return value.toFixed(2) + ' NOK';
+// Helper to extract effective values from DataFetchResult<T> + manual overrides
+function getEurNokDisplay(reportData: ReportData, marketData: MarketData): string {
+  const manual = reportData.manualData?.eurNok;
+  const auto = marketData.eurNok.data?.rate ?? null;
+  const value = manual ?? auto;
+  return value !== null ? `${value.toFixed(2)} NOK` : 'Ikke tilgjengelig';
 }
 
-function getEffectiveHPI(reportData: ReportData, marketData: MarketData): string {
-  const value = reportData.manualData?.italyHPI ?? marketData.italyHPI.data?.value;
-  if (value == null) return 'Ikke tilgjengelig';
-  return value.toFixed(1);
+function getEurNokSource(reportData: ReportData, marketData: MarketData): string {
+  if (reportData.manualData?.eurNok !== undefined) return 'Manuelt oppgitt';
+  if (marketData.eurNok.status === 'success' && marketData.eurNok.data?.date) {
+    return `Per ${marketData.eurNok.data.date}`;
+  }
+  return 'Ikke tilgjengelig';
 }
 
-function getEffectiveTuscanyPrice(reportData: ReportData, marketData: MarketData): string {
-  const value = reportData.manualData?.tuscanyAvgPrice ?? marketData.tuscanyData.data?.avgPricePerSqm;
-  if (value == null) return 'Ikke tilgjengelig';
-  return new Intl.NumberFormat('nb-NO').format(value) + ' EUR/kvm';
+function getHPIDisplay(reportData: ReportData, marketData: MarketData): string {
+  const manual = reportData.manualData?.italyHPI;
+  const auto = marketData.italyHPI.data?.value ?? null;
+  const value = manual ?? auto;
+  return value !== null ? value.toFixed(1) : 'Ikke tilgjengelig';
 }
 
-const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) => {
-  const eurNokValue = getEffectiveEurNok(reportData, marketData);
-  const hpiValue = getEffectiveHPI(reportData, marketData);
-  const tuscanyPrice = getEffectiveTuscanyPrice(reportData, marketData);
+function getHPIPeriod(reportData: ReportData, marketData: MarketData): string {
+  if (reportData.manualData?.italyHPI !== undefined) return 'Manuelt oppgitt';
+  return marketData.italyHPI.data?.period ?? '–';
+}
+
+function getYoYDisplay(marketData: MarketData): { str: string; positive: boolean } {
   const yoy = marketData.italyHPI.data?.yearOnYear ?? null;
-  const yoyStr = yoy !== null ? `${yoy > 0 ? '+' : ''}${yoy}% ÅoÅ` : '–';
-  const hpiIsManual = !!reportData.manualData?.italyHPI || marketData.italyHPI.status !== 'success';
-  const eurNokIsManual = !!reportData.manualData?.eurNok || marketData.eurNok.status !== 'success';
-  const tuscanyIsManual = !!reportData.manualData?.tuscanyAvgPrice;
+  if (yoy === null) return { str: '–', positive: true };
+  return {
+    str: `${yoy >= 0 ? '+' : ''}${yoy}% ÅoÅ`,
+    positive: yoy >= 0,
+  };
+}
+
+function getTuscanyDisplay(reportData: ReportData, marketData: MarketData): string {
+  const manual = reportData.manualData?.tuscanyAvgPrice;
+  const auto = marketData.tuscanyData.data?.avgPricePerSqm ?? null;
+  const value = manual ?? auto;
+  return value !== null
+    ? `${new Intl.NumberFormat('nb-NO').format(value)} EUR/kvm`
+    : 'Ikke tilgjengelig';
+}
+
+function getTuscanySource(reportData: ReportData, marketData: MarketData): string {
+  if (reportData.manualData?.tuscanyAvgPrice !== undefined) return 'Manuelt oppgitt';
+  if (marketData.tuscanyData.status === 'success') return 'Auto-hentet';
+  return 'Manuelt oppgitt';
+}
+
+interface PDFDocProps {
+  reportData: ReportData;
+  marketData: MarketData;
+}
+
+const ReportDocument: React.FC<PDFDocProps> = ({ reportData, marketData }) => {
+  const eurNokDisplay = getEurNokDisplay(reportData, marketData);
+  const eurNokSub = getEurNokSource(reportData, marketData);
+  const hpiDisplay = getHPIDisplay(reportData, marketData);
+  const hpiPeriod = getHPIPeriod(reportData, marketData);
+  const { str: yoyStr, positive: yoyPositive } = getYoYDisplay(marketData);
+  const tuscanyDisplay = getTuscanyDisplay(reportData, marketData);
+  const tuscanySub = getTuscanySource(reportData, marketData);
+  const tuscanyHasValue =
+    reportData.manualData?.tuscanyAvgPrice !== undefined ||
+    marketData.tuscanyData.data !== null;
+
+  const pageFooter = (
+    <View style={styles.footer} fixed>
+      <Text style={styles.footerLeft}>KÄMPE ESTATES</Text>
+      <Text style={styles.footerCenter}>
+        Konfidensielt markedsdokument · Kun for interne og klientformål
+      </Text>
+      <Text style={styles.footerRight}>
+        Rapport: {reportData.edition} · {formatDate(reportData.date)}
+      </Text>
+    </View>
+  );
+
+  const pageHeader = (
+    <View style={styles.headerBar}>
+      <View>
+        <Text style={styles.headerBrand}>KÄMPE ESTATES</Text>
+        <Text style={styles.headerTagline}>LUKSUS EIENDOM · ITALIA</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={[styles.headerTagline, { fontSize: 9, color: 'rgba(255,255,255,0.85)' }]}>
+          MARKEDSRAPPORT
+        </Text>
+        <Text style={[styles.headerTagline, { marginTop: 2 }]}>
+          {formatDate(reportData.date)}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <Document
       title={`Kämpe Estates Markedsrapport – ${reportData.edition}`}
       author="Kämpe Estates"
       subject="Italiensk luksus eiendom – markedsrapport"
-      keywords="Italia, Toscana, eiendom, luksus, boligmarked"
       creator="Kämpe Estates Report Generator"
-      producer="@react-pdf/renderer"
     >
+      {/* ── PAGE 1 ── */}
       <Page size="A4" style={styles.page}>
-        {/* ── HEADER BAR ── */}
-        <View style={styles.headerBar}>
-          <View>
-            <Text style={styles.headerBrand}>KÄMPE ESTATES</Text>
-            <Text style={styles.headerTagline}>LUKSUS EIENDOM · ITALIA</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.headerTagline, { fontSize: 9, color: 'rgba(255,255,255,0.85)' }]}>
-              MARKEDSRAPPORT
-            </Text>
-            <Text style={[styles.headerTagline, { marginTop: 2 }]}>
-              {formatDate(reportData.date)}
-            </Text>
-          </View>
-        </View>
+        {pageHeader}
 
-        {/* ── TITLE SECTION ── */}
+        {/* Title section */}
         <View style={styles.titleSection}>
           <Text style={styles.reportLabel}>UTGAVE · {reportData.edition}</Text>
           <Text style={styles.reportTitle}>
@@ -434,27 +450,23 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
           </View>
         </View>
 
-        {/* ── MARKET DATA STRIP ── */}
+        {/* Market data strip */}
         <View style={styles.dataStrip}>
           <View style={styles.dataStripItem}>
             <Text style={styles.dataStripLabel}>EUR/NOK-kurs</Text>
-            <Text style={styles.dataStripValue}>{eurNokValue}</Text>
-            <Text style={styles.dataStripSub}>
-              {eurNokIsManual ? 'Manuelt oppgitt' : `Per ${marketData.eurNok.data?.date || 'siste'}`}
-            </Text>
+            <Text style={styles.dataStripValue}>{eurNokDisplay}</Text>
+            <Text style={styles.dataStripSub}>{eurNokSub}</Text>
           </View>
           <View style={styles.dataStripDivider} />
           <View style={styles.dataStripItem}>
             <Text style={styles.dataStripLabel}>Italia HPI</Text>
-            <Text style={styles.dataStripValue}>{hpiValue}</Text>
-            <Text style={styles.dataStripSub}>
-              {marketData.italyHPI.data?.period || (hpiIsManual ? 'Manuelt' : '–')}
-            </Text>
+            <Text style={styles.dataStripValue}>{hpiDisplay}</Text>
+            <Text style={styles.dataStripSub}>{hpiPeriod}</Text>
           </View>
           <View style={styles.dataStripDivider} />
           <View style={styles.dataStripItem}>
             <Text style={styles.dataStripLabel}>Årsendring HPI</Text>
-            <Text style={[styles.dataStripValue, { color: yoy !== null && yoy >= 0 ? OLIVE : '#8B2020' }]}>
+            <Text style={[styles.dataStripValue, { color: yoyPositive ? OLIVE : '#8B2020' }]}>
               {yoyStr}
             </Text>
             <Text style={styles.dataStripSub}>Prisindeks</Text>
@@ -462,15 +474,14 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
           <View style={styles.dataStripDivider} />
           <View style={styles.dataStripItem}>
             <Text style={styles.dataStripLabel}>Toscana snitt</Text>
-            <Text style={styles.dataStripValue}>{tuscanyPrice}</Text>
-            <Text style={styles.dataStripSub}>{tuscanyIsManual ? 'Manuelt oppgitt' : '–'}</Text>
+            <Text style={styles.dataStripValue}>{tuscanyDisplay}</Text>
+            <Text style={styles.dataStripSub}>{tuscanySub}</Text>
           </View>
         </View>
 
-        {/* ── CONTENT ── */}
+        {/* Content */}
         <View style={styles.content}>
-
-          {/* SECTION 1: Italy Overview */}
+          {/* 01 Italy Overview */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNumber}>01</Text>
@@ -482,7 +493,7 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
             </Text>
           </View>
 
-          {/* SECTION 2: Tuscany */}
+          {/* 02 Tuscany Focus */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNumber}>02</Text>
@@ -494,7 +505,7 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
             </Text>
           </View>
 
-          {/* SECTION 3: Norwegian Buyers */}
+          {/* 03 Norwegian Buyers */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNumber}>03</Text>
@@ -502,29 +513,33 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
               <View style={styles.sectionLine} />
             </View>
 
-            {/* NOK/EUR callout box */}
+            {/* Data callout boxes */}
             <View style={styles.dataCallout}>
               <View style={styles.calloutItem}>
                 <Text style={styles.calloutLabel}>EUR/NOK vekslingskurs</Text>
-                <Text style={styles.calloutValue}>{eurNokValue}</Text>
+                <Text style={styles.calloutValue}>{eurNokDisplay}</Text>
                 <Text style={styles.calloutNote}>
-                  Kilde: {eurNokIsManual ? 'Manuelt oppgitt' : 'Norges Bank'}
+                  Kilde:{' '}
+                  {reportData.manualData?.eurNok !== undefined
+                    ? 'Manuelt oppgitt'
+                    : 'Norges Bank'}
                 </Text>
               </View>
               <View style={styles.calloutItem}>
                 <Text style={styles.calloutLabel}>Italia HPI (indeks)</Text>
-                <Text style={styles.calloutValue}>{hpiValue}</Text>
+                <Text style={styles.calloutValue}>{hpiDisplay}</Text>
                 <Text style={styles.calloutNote}>
-                  Kilde: {hpiIsManual ? 'Manuelt oppgitt' : 'Eurostat'}
+                  Kilde:{' '}
+                  {reportData.manualData?.italyHPI !== undefined
+                    ? 'Manuelt oppgitt'
+                    : 'Eurostat'}
                 </Text>
               </View>
-              {tuscanyPrice !== 'Ikke tilgjengelig' && (
+              {tuscanyHasValue && (
                 <View style={styles.calloutItem}>
                   <Text style={styles.calloutLabel}>Toscana gjennomsnitt</Text>
-                  <Text style={styles.calloutValue}>{tuscanyPrice}</Text>
-                  <Text style={styles.calloutNote}>
-                    Kilde: Manuelt oppgitt
-                  </Text>
+                  <Text style={styles.calloutValue}>{tuscanyDisplay}</Text>
+                  <Text style={styles.calloutNote}>Kilde: Manuelt oppgitt</Text>
                 </View>
               )}
             </View>
@@ -533,24 +548,13 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
               {reportData.sections.norwegianBuyers || 'Ingen tekst lagt inn for dette avsnittet.'}
             </Text>
           </View>
-
         </View>
 
-        {/* ── FOOTER PAGE 1 ── */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerLeft}>KÄMPE ESTATES</Text>
-          <Text style={styles.footerCenter}>
-            Konfidensielt markedsdokument · Kun for interne og klientformål
-          </Text>
-          <Text style={styles.footerRight}>
-            Rapport: {reportData.edition} · {formatDate(reportData.date)}
-          </Text>
-        </View>
+        {pageFooter}
       </Page>
 
       {/* ── PAGE 2 ── */}
       <Page size="A4" style={styles.page}>
-        {/* Header bar page 2 */}
         <View style={styles.headerBar}>
           <View>
             <Text style={styles.headerBrand}>KÄMPE ESTATES</Text>
@@ -567,8 +571,7 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
         </View>
 
         <View style={styles.content}>
-
-          {/* SECTION 4: Area Spotlight */}
+          {/* 04 Area Spotlight */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNumber}>04</Text>
@@ -582,7 +585,7 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
             </Text>
           </View>
 
-          {/* SECTION 5: Editorial */}
+          {/* 05 Editorial */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNumber}>05</Text>
@@ -596,87 +599,69 @@ const ReportDocument: React.FC<PDFTemplateProps> = ({ reportData, marketData }) 
             </View>
           </View>
 
-          {/* ── PROPERTIES TABLE ── */}
-          {marketData.notionProperties && marketData.notionProperties.length > 0 && (
+          {/* Notion Properties table */}
+          {marketData.notionProperties.length > 0 && (
             <View style={styles.tableSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionNumber}>–</Text>
                 <Text style={styles.sectionTitle}>Aktuelle eiendommer</Text>
                 <View style={styles.sectionLine} />
               </View>
-              <View>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderCell, { flex: 2.5 }]}>Eiendom</Text>
-                  <Text style={styles.tableHeaderCell}>Område</Text>
-                  <Text style={styles.tableHeaderCell}>Pris</Text>
-                  <Text style={styles.tableHeaderCell}>Kvm</Text>
-                  <Text style={styles.tableHeaderCell}>Status</Text>
-                </View>
-                {marketData.notionProperties.slice(0, 8).map((prop, idx) => (
-                  <View
-                    key={prop.id}
-                    style={[
-                      styles.tableRow,
-                      idx % 2 === 1 ? styles.tableRowAlt : {},
-                    ]}
-                  >
-                    <Text style={[styles.tableCellBold, { flex: 2.5 }]} numberOfLines={2}>
-                      {prop.address}
-                    </Text>
-                    <Text style={styles.tableCell} numberOfLines={1}>
-                      {prop.area}
-                    </Text>
-                    <Text style={styles.tableCell}>
-                      {formatPrice(prop.price, prop.currency)}
-                    </Text>
-                    <Text style={styles.tableCell}>
-                      {prop.sqm !== null ? `${prop.sqm} m²` : '–'}
-                    </Text>
-                    <Text style={styles.tableCell} numberOfLines={1}>
-                      {prop.status}
-                    </Text>
-                  </View>
-                ))}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2.5 }]}>Eiendom</Text>
+                <Text style={styles.tableHeaderCell}>Område</Text>
+                <Text style={styles.tableHeaderCell}>Pris</Text>
+                <Text style={styles.tableHeaderCell}>Kvm</Text>
+                <Text style={styles.tableHeaderCell}>Status</Text>
               </View>
+              {marketData.notionProperties.slice(0, 8).map((prop, idx) => (
+                <View
+                  key={prop.id}
+                  style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}
+                >
+                  <Text style={[styles.tableCellBold, { flex: 2.5 }]} numberOfLines={2}>
+                    {prop.address}
+                  </Text>
+                  <Text style={styles.tableCell} numberOfLines={1}>
+                    {prop.area}
+                  </Text>
+                  <Text style={styles.tableCell}>
+                    {formatPrice(prop.price, prop.currency)}
+                  </Text>
+                  <Text style={styles.tableCell}>
+                    {prop.sqm !== null ? `${prop.sqm} m²` : '–'}
+                  </Text>
+                  <Text style={styles.tableCell} numberOfLines={1}>
+                    {prop.status}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
 
-          {/* ── DATA SOURCES ── */}
+          {/* Data sources */}
           <View style={styles.sourcesSection}>
             <Text style={styles.sourcesTitle}>Datakilder</Text>
             <Text style={styles.sourceItem}>
-              • EUR/NOK-kurs: Norges Bank Exchange Rate API –
-              data.norges-bank.no/api/data/EXR/B.EUR.NOK.SP
+              • EUR/NOK-kurs: Norges Bank Exchange Rate API – data.norges-bank.no
             </Text>
             <Text style={styles.sourceItem}>
-              • Boligprisindeks Italia: Eurostat PRC_HPI_A –
-              ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/PRC_HPI_A
+              • Boligprisindeks Italia: Eurostat PRC_HPI_A – ec.europa.eu/eurostat
             </Text>
             <Text style={styles.sourceItem}>
-              • Toscana markedsdata: Banca d'Italia –
-              bancaditalia.it/statistiche/tematiche/moneta-credito-liquidita
+              • Toscana markedsdata: Banca d'Italia – bancaditalia.it (manuell inndata)
             </Text>
             <Text style={styles.sourceItem}>
               • Eiendommer: Kämpe Estates Notion-database (ID: 33b1573c-e82d-80e6-ae7e-f008c4a26fa6)
             </Text>
             <Text style={[styles.sourceItem, { marginTop: 6, fontFamily: 'Helvetica-Oblique' }]}>
-              Rapporten er generert {formatDate(reportData.date)} og er kun ment
-              som et internt arbeidsverktøy for Kämpe Estates og deres klienter.
-              Informasjonen er ikke juridisk eller finansiell rådgivning.
+              Rapporten er generert {formatDate(reportData.date)} og er kun ment som et internt
+              arbeidsverktøy. Informasjonen er ikke juridisk eller finansiell rådgivning.
             </Text>
           </View>
         </View>
 
-        {/* ── FOOTER PAGE 2 ── */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerLeft}>KÄMPE ESTATES</Text>
-          <Text style={styles.footerCenter}>
-            Konfidensielt markedsdokument · Kun for interne og klientformål
-          </Text>
-          <Text style={styles.footerRight}>
-            Rapport: {reportData.edition} · {formatDate(reportData.date)}
-          </Text>
-        </View>
+        {pageFooter}
       </Page>
     </Document>
   );

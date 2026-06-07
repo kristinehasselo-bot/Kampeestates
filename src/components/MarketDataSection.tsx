@@ -59,23 +59,30 @@ export default function MarketDataSection({
 }: MarketDataSectionProps) {
   const { eurNok, italyHPI, tuscanyData, notionProperties } = marketData;
 
-  // Effective display values (manual overrides auto)
+  // Extract nested data fields once
+  const eurNokRate = eurNok.data?.rate ?? null;
+  const eurNokDate = eurNok.data?.date ?? null;
+  const hpiValue = italyHPI.data?.value ?? null;
+  const hpiPeriod = italyHPI.data?.period ?? null;
+  const hpiYoy = italyHPI.data?.yearOnYear ?? null;
+  const tuscanyPrice = tuscanyData.data?.avgPricePerSqm ?? null;
+
   const eurNokDisplay = manualEurNok
     ? `${parseFloat(manualEurNok).toFixed(2)} NOK`
-    : eurNok.rate !== null
-    ? `${eurNok.rate.toFixed(2)} NOK`
+    : eurNokRate !== null
+    ? `${eurNokRate.toFixed(2)} NOK`
     : 'Ikke tilgjengelig';
 
   const hpiDisplay = manualHPI
     ? parseFloat(manualHPI).toFixed(1)
-    : italyHPI.value !== null
-    ? italyHPI.value.toFixed(1)
+    : hpiValue !== null
+    ? hpiValue.toFixed(1)
     : 'Ikke tilgjengelig';
 
   const tuscanyDisplay = manualTuscanyPrice
     ? `${parseInt(manualTuscanyPrice).toLocaleString('nb-NO')} EUR/kvm`
-    : tuscanyData.avgPricePerSqm !== null
-    ? `${tuscanyData.avgPricePerSqm.toLocaleString('nb-NO')} EUR/kvm`
+    : tuscanyPrice !== null
+    ? `${tuscanyPrice.toLocaleString('nb-NO')} EUR/kvm`
     : 'Ikke tilgjengelig';
 
   return (
@@ -94,8 +101,8 @@ export default function MarketDataSection({
             label="EUR/NOK-kurs"
             value={eurNokDisplay}
             sub={
-              eurNok.status === 'success' && eurNok.date
-                ? `Per ${eurNok.date}`
+              eurNok.status === 'success' && eurNokDate
+                ? `Per ${eurNokDate}`
                 : manualEurNok
                 ? 'Manuelt oppgitt'
                 : undefined
@@ -104,8 +111,8 @@ export default function MarketDataSection({
           <StatCard
             label="Italia HPI (Eurostat)"
             value={hpiDisplay}
-            sub={italyHPI.period || (manualHPI ? 'Manuelt oppgitt' : undefined)}
-            trend={italyHPI.yearOnYear}
+            sub={hpiPeriod || (manualHPI ? 'Manuelt oppgitt' : undefined)}
+            trend={hpiYoy}
           />
           <StatCard
             label="Toscana gjennomsnittspris"
@@ -121,31 +128,22 @@ export default function MarketDataSection({
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
             EUR/NOK-kurs
           </h3>
-          <DataStatusBadge
-            status={eurNok.status}
-            compact
-            message={eurNok.errorMessage}
-          />
+          <DataStatusBadge status={eurNok.status} compact message={eurNok.errorMessage} />
         </div>
-        {eurNok.status === 'success' && eurNok.rate !== null ? (
+        {eurNok.status === 'success' && eurNokRate !== null ? (
           <div className="bg-brand-bg-secondary border border-brand-line-secondary p-3 text-sm font-inter text-brand-text-secondary">
             <span className="font-medium text-brand-text-primary">
-              1 EUR = {eurNok.rate.toFixed(4)} NOK
+              1 EUR = {eurNokRate.toFixed(4)} NOK
             </span>
-            {eurNok.date && (
-              <span className="text-brand-text-muted ml-2">· Dato: {eurNok.date}</span>
+            {eurNokDate && (
+              <span className="text-brand-text-muted ml-2">· Dato: {eurNokDate}</span>
             )}
             <span className="text-brand-text-muted ml-2">· Kilde: {eurNok.source}</span>
           </div>
         ) : (
-          <>
-            {eurNok.errorMessage && (
-              <DataStatusBadge
-                status={eurNok.status}
-                message={eurNok.errorMessage}
-              />
-            )}
-          </>
+          eurNok.errorMessage && (
+            <DataStatusBadge status={eurNok.status} message={eurNok.errorMessage} />
+          )
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -156,11 +154,7 @@ export default function MarketDataSection({
               type="number"
               step="0.0001"
               min="0"
-              placeholder={
-                eurNok.rate !== null
-                  ? eurNok.rate.toFixed(4)
-                  : 'f.eks. 11.7500'
-              }
+              placeholder={eurNokRate !== null ? eurNokRate.toFixed(4) : 'f.eks. 11.7500'}
               value={manualEurNok}
               onChange={(e) => onManualEurNokChange(e.target.value)}
               className="input-field max-w-xs"
@@ -177,7 +171,8 @@ export default function MarketDataSection({
           </div>
           {manualEurNok && (
             <p className="text-xs text-brand-text-muted mt-1 font-inter">
-              Manuell verdi brukes i PDF: <strong>{parseFloat(manualEurNok).toFixed(4)} NOK</strong>
+              Manuell verdi brukes i PDF:{' '}
+              <strong>{parseFloat(manualEurNok).toFixed(4)} NOK</strong>
             </p>
           )}
         </div>
@@ -191,39 +186,28 @@ export default function MarketDataSection({
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
             Italia boligprisindeks (Eurostat)
           </h3>
-          <DataStatusBadge
-            status={italyHPI.status}
-            compact
-            message={italyHPI.errorMessage}
-          />
+          <DataStatusBadge status={italyHPI.status} compact message={italyHPI.errorMessage} />
         </div>
-        {italyHPI.status === 'success' && italyHPI.value !== null ? (
+        {italyHPI.status === 'success' && hpiValue !== null ? (
           <div className="bg-brand-bg-secondary border border-brand-line-secondary p-3 text-sm font-inter text-brand-text-secondary">
             <span className="font-medium text-brand-text-primary">
-              HPI: {italyHPI.value.toFixed(1)}
+              HPI: {hpiValue.toFixed(1)}
             </span>
-            {italyHPI.period && (
-              <span className="text-brand-text-muted ml-2">· Periode: {italyHPI.period}</span>
+            {hpiPeriod && (
+              <span className="text-brand-text-muted ml-2">· Periode: {hpiPeriod}</span>
             )}
-            {italyHPI.yearOnYear !== null && (
+            {hpiYoy !== null && (
               <span
-                className={`ml-2 font-medium ${
-                  italyHPI.yearOnYear >= 0 ? 'text-emerald-600' : 'text-red-600'
-                }`}
+                className={`ml-2 font-medium ${hpiYoy >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
               >
-                · {italyHPI.yearOnYear >= 0 ? '+' : ''}{italyHPI.yearOnYear}% ÅoÅ
+                · {hpiYoy >= 0 ? '+' : ''}{hpiYoy}% ÅoÅ
               </span>
             )}
           </div>
         ) : (
-          <>
-            {italyHPI.errorMessage && (
-              <DataStatusBadge
-                status={italyHPI.status}
-                message={italyHPI.errorMessage}
-              />
-            )}
-          </>
+          italyHPI.errorMessage && (
+            <DataStatusBadge status={italyHPI.status} message={italyHPI.errorMessage} />
+          )
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -234,11 +218,7 @@ export default function MarketDataSection({
               type="number"
               step="0.1"
               min="0"
-              placeholder={
-                italyHPI.value !== null
-                  ? italyHPI.value.toFixed(1)
-                  : 'f.eks. 115.2'
-              }
+              placeholder={hpiValue !== null ? hpiValue.toFixed(1) : 'f.eks. 115.2'}
               value={manualHPI}
               onChange={(e) => onManualHPIChange(e.target.value)}
               className="input-field max-w-xs"
@@ -264,11 +244,7 @@ export default function MarketDataSection({
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
             Toscana markedsdata (Banca d'Italia)
           </h3>
-          <DataStatusBadge
-            status="manual"
-            compact
-            label="Manuell inndata"
-          />
+          <DataStatusBadge status="manual" compact label="Manuell inndata" />
         </div>
         <DataStatusBadge
           status="manual"
@@ -344,21 +320,11 @@ export default function MarketDataSection({
             <table className="w-full text-sm font-inter border-collapse">
               <thead>
                 <tr className="bg-brand-burgundy text-white">
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">
-                    Eiendom
-                  </th>
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">
-                    Område
-                  </th>
-                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">
-                    Pris
-                  </th>
-                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">
-                    Kvm
-                  </th>
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">
-                    Status
-                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Eiendom</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Område</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">Pris</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">Kvm</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -383,9 +349,7 @@ export default function MarketDataSection({
                         prop.address
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-brand-text-secondary">
-                      {prop.area}
-                    </td>
+                    <td className="px-3 py-2.5 text-brand-text-secondary">{prop.area}</td>
                     <td className="px-3 py-2.5 text-right text-brand-text-primary font-medium tabular-nums">
                       {prop.price !== null
                         ? `${prop.price.toLocaleString('nb-NO')} ${prop.currency}`
