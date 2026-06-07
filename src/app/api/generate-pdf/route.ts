@@ -56,12 +56,17 @@ export async function POST(request: NextRequest) {
     const dateStr = new Date(reportData.date).toISOString().split('T')[0];
     const filename = `kampe-estates-markedsrapport-${safeEdition}-${dateStr}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    // Convert to Buffer for proper BodyInit compatibility
+    const nodeBuffer = Buffer.from(pdfBuffer);
+    return new NextResponse(nodeBuffer.buffer.slice(
+      nodeBuffer.byteOffset,
+      nodeBuffer.byteOffset + nodeBuffer.byteLength
+    ) as ArrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': pdfBuffer.length.toString(),
+        'Content-Length': String(pdfBuffer.byteLength),
         'Cache-Control': 'no-store',
       },
     });

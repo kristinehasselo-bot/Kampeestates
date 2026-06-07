@@ -619,11 +619,11 @@ const ReportDocument: React.FC<PDFDocProps> = ({ reportData, marketData }) => {
                   key={prop.id}
                   style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}
                 >
-                  <Text style={[styles.tableCellBold, { flex: 2.5 }]} numberOfLines={2}>
-                    {prop.address}
+                  <Text style={[styles.tableCellBold, { flex: 2.5 }]}>
+                    {prop.address.slice(0, 40)}
                   </Text>
-                  <Text style={styles.tableCell} numberOfLines={1}>
-                    {prop.area}
+                  <Text style={styles.tableCell}>
+                    {prop.area.slice(0, 20)}
                   </Text>
                   <Text style={styles.tableCell}>
                     {formatPrice(prop.price, prop.currency)}
@@ -631,8 +631,8 @@ const ReportDocument: React.FC<PDFDocProps> = ({ reportData, marketData }) => {
                   <Text style={styles.tableCell}>
                     {prop.sqm !== null ? `${prop.sqm} m²` : '–'}
                   </Text>
-                  <Text style={styles.tableCell} numberOfLines={1}>
-                    {prop.status}
+                  <Text style={styles.tableCell}>
+                    {prop.status.slice(0, 15)}
                   </Text>
                 </View>
               ))}
@@ -670,8 +670,15 @@ const ReportDocument: React.FC<PDFDocProps> = ({ reportData, marketData }) => {
 export async function generatePDF(
   reportData: ReportData,
   marketData: MarketData
-): Promise<Buffer> {
-  const element = React.createElement(ReportDocument, { reportData, marketData });
-  const buffer = await renderToBuffer(element);
-  return Buffer.from(buffer);
+): Promise<Uint8Array> {
+  // Build the Document element directly (renderToBuffer requires DocumentProps element)
+  const doc = React.createElement(
+    ReportDocument,
+    { reportData, marketData }
+  );
+  // Cast is required because renderToBuffer expects ReactElement<DocumentProps>
+  // but ReportDocument wraps Document so it is compatible at runtime
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buffer = await renderToBuffer(doc as any);
+  return new Uint8Array(buffer);
 }
