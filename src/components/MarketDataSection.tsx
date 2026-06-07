@@ -57,7 +57,7 @@ export default function MarketDataSection({
   onManualHPIChange,
   onManualTuscanyPriceChange,
 }: MarketDataSectionProps) {
-  const { eurNok, italyHPI, tuscanyData, notionProperties } = marketData;
+  const { eurNok, italyHPI, tuscanyData } = marketData;
 
   // Extract nested data fields once
   const eurNokRate = eurNok.data?.rate ?? null;
@@ -141,9 +141,10 @@ export default function MarketDataSection({
             <span className="text-brand-text-muted ml-2">· Kilde: {eurNok.source}</span>
           </div>
         ) : (
-          eurNok.errorMessage && (
-            <DataStatusBadge status={eurNok.status} message={eurNok.errorMessage} />
-          )
+          <DataStatusBadge
+            status={eurNok.status}
+            message={eurNok.errorMessage ?? 'Klarte ikke å hente EUR/NOK-kurs fra Norges Bank. Bruk manuell overstyring nedenfor.'}
+          />
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -205,9 +206,10 @@ export default function MarketDataSection({
             )}
           </div>
         ) : (
-          italyHPI.errorMessage && (
-            <DataStatusBadge status={italyHPI.status} message={italyHPI.errorMessage} />
-          )
+          <DataStatusBadge
+            status={italyHPI.status}
+            message={italyHPI.errorMessage ?? 'Klarte ikke å hente boligprisindeks fra Eurostat. Bruk manuell overstyring nedenfor.'}
+          />
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -288,88 +290,6 @@ export default function MarketDataSection({
         </div>
       </div>
 
-      <hr className="divider" />
-
-      {/* ── Notion Properties ── */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            Eiendommer fra Notion
-          </h3>
-          <DataStatusBadge
-            status={notionProperties.length > 0 ? 'success' : 'error'}
-            compact
-            label={
-              notionProperties.length > 0
-                ? `${notionProperties.length} eiendommer`
-                : 'Ingen data'
-            }
-          />
-        </div>
-
-        {notionProperties.length === 0 ? (
-          <div className="bg-brand-bg-secondary border border-brand-line-secondary p-4 text-sm font-inter text-brand-text-muted">
-            Ingen eiendommer funnet i Notion-databasen. Sjekk at{' '}
-            <code className="bg-white px-1 py-0.5 text-xs border border-brand-line-primary">
-              NOTION_API_KEY
-            </code>{' '}
-            er konfigurert og at databasen er delt med integrasjonen.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm font-inter border-collapse">
-              <thead>
-                <tr className="bg-brand-burgundy text-white">
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Eiendom</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Område</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">Pris</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium tracking-wider">Kvm</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {notionProperties.map((prop, idx) => (
-                  <tr
-                    key={prop.id}
-                    className={`border-b border-brand-line-secondary hover:bg-brand-bg-secondary transition-colors ${
-                      idx % 2 === 0 ? 'bg-white' : 'bg-brand-bg-secondary/50'
-                    }`}
-                  >
-                    <td className="px-3 py-2.5 font-medium text-brand-text-primary">
-                      {prop.url ? (
-                        <a
-                          href={prop.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-brand-burgundy underline decoration-brand-line-primary transition-colors"
-                        >
-                          {prop.address}
-                        </a>
-                      ) : (
-                        prop.address
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-brand-text-secondary">{prop.area}</td>
-                    <td className="px-3 py-2.5 text-right text-brand-text-primary font-medium tabular-nums">
-                      {prop.price !== null
-                        ? `${prop.price.toLocaleString('nb-NO')} ${prop.currency}`
-                        : '–'}
-                    </td>
-                    <td className="px-3 py-2.5 text-right text-brand-text-secondary tabular-nums">
-                      {prop.sqm !== null ? `${prop.sqm} m²` : '–'}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="inline-flex items-center px-2 py-0.5 text-xs bg-brand-bg-secondary border border-brand-line-primary text-brand-text-muted rounded-sm">
-                        {prop.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

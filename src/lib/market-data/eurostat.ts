@@ -1,7 +1,7 @@
 import type { DataFetchResult } from '@/types';
 
 const EUROSTAT_URL =
-  'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/PRC_HPI_A?geo=IT&unit=I15_A&filterNonGeo=1';
+  'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hpi_a?geo=IT&unit=I15_A';
 
 interface ItalyHPIData {
   value: number;
@@ -12,7 +12,7 @@ interface ItalyHPIData {
 export async function fetchItalyHPI(): Promise<DataFetchResult<ItalyHPIData>> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(EUROSTAT_URL, {
       signal: controller.signal,
@@ -29,9 +29,15 @@ export async function fetchItalyHPI(): Promise<DataFetchResult<ItalyHPIData>> {
 
     const json = await response.json();
 
-    const values = json?.value;
+    const rawValues = json?.value;
     const timeDimension = json?.dimension?.time?.category;
-    if (!values || !timeDimension) throw new Error('Uventet dataformat fra Eurostat');
+    if (rawValues == null || !timeDimension) throw new Error('Uventet dataformat fra Eurostat');
+
+    // Eurostat may return values as array or as object with numeric string keys
+    const getValue = (idx: number): number | null => {
+      const v = Array.isArray(rawValues) ? rawValues[idx] : rawValues[String(idx)];
+      return v != null ? Number(v) : null;
+    };
 
     const timeIndex: Record<string, number> = timeDimension.index ?? {};
     const timeLabels: Record<string, string> = timeDimension.label ?? {};
@@ -39,7 +45,7 @@ export async function fetchItalyHPI(): Promise<DataFetchResult<ItalyHPIData>> {
     const periods = Object.entries(timeIndex)
       .map(([period, idx]) => ({
         period,
-        value: values[String(idx)] != null ? Number(values[String(idx)]) : null,
+        value: getValue(idx),
       }))
       .filter((p) => p.value !== null)
       .sort((a, b) => a.period.localeCompare(b.period));

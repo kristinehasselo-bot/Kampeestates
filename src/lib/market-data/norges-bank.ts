@@ -11,7 +11,7 @@ interface EurNokData {
 export async function fetchEurNokRate(): Promise<DataFetchResult<EurNokData>> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(NORGES_BANK_URL, {
       signal: controller.signal,
