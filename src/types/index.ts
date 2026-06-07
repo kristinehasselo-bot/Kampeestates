@@ -1,27 +1,33 @@
+export interface DataFetchResult<T> {
+  data: T | null;
+  status: 'success' | 'error' | 'manual';
+  source: string;
+  errorMessage?: string;
+}
+
+export interface EurNokData {
+  rate: number;
+  date: string;
+}
+
+export interface ItalyHPIData {
+  value: number;
+  period: string;
+  yearOnYear: number | null;
+}
+
+export interface TuscanyData {
+  avgPricePerSqm: number;
+  trend: string;
+}
+
 export interface MarketData {
-  eurNok: {
-    rate: number | null;
-    date: string | null;
-    source: string;
-    status: 'success' | 'error' | 'manual';
-    errorMessage?: string;
-  };
-  italyHPI: {
-    value: number | null;
-    period: string | null;
-    yearOnYear: number | null;
-    source: string;
-    status: 'success' | 'error' | 'manual';
-    errorMessage?: string;
-  };
-  tuscanyData: {
-    avgPricePerSqm: number | null;
-    trend: string | null;
-    source: string;
-    status: 'success' | 'error' | 'manual';
-    errorMessage?: string;
-  };
+  eurNok: DataFetchResult<EurNokData>;
+  italyHPI: DataFetchResult<ItalyHPIData>;
+  tuscanyData: DataFetchResult<TuscanyData>;
   notionProperties: NotionProperty[];
+  notionStatus: 'success' | 'error';
+  notionError?: string;
 }
 
 export interface NotionProperty {
@@ -51,10 +57,4 @@ export interface ReportData {
     italyHPI?: number;
     tuscanyAvgPrice?: number;
   };
-}
-
-export interface DataFetchResult<T> {
-  data: T | null;
-  status: 'success' | 'error' | 'manual';
-  errorMessage?: string;
 }

@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --font-cormorant: 'Cormorant Garamond', Georgia, serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #FBFBF8;
+    color: #1F1F1F;
+  }
+
+  /* Headings use Cormorant Garamond */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-cormorant), Georgia, serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-burgundy text-white font-inter font-medium px-6 py-3
+           transition-all duration-200 hover:bg-opacity-90
+           focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-brand-line-primary text-brand-text-secondary
+           font-inter font-medium px-6 py-3
+           transition-all duration-200 hover:bg-brand-bg-secondary
+           focus:outline-none focus:ring-2 focus:ring-brand-olive focus:ring-offset-2;
+  }
+
+  .card {
+    @apply bg-brand-bg-secondary border border-brand-line-secondary;
+  }
+
+  .input-field {
+    @apply w-full bg-white border border-brand-line-primary text-brand-text-primary
+           px-4 py-3 text-sm font-inter
+           focus:outline-none focus:ring-1 focus:ring-brand-burgundy focus:border-brand-burgundy
+           placeholder:text-brand-text-muted
+           transition-colors duration-150;
+  }
+
+  .textarea-field {
+    @apply w-full bg-white border border-brand-line-primary text-brand-text-primary
+           px-4 py-3 text-sm font-inter leading-relaxed
+           focus:outline-none focus:ring-1 focus:ring-brand-burgundy focus:border-brand-burgundy
+           placeholder:text-brand-text-muted
+           transition-colors duration-150 resize-y;
+  }
+
+  .section-label {
+    @apply text-xs font-inter font-medium tracking-widest text-brand-text-muted uppercase;
+  }
+
+  .divider {
+    @apply border-0 border-t border-brand-line-primary;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #CFC8B8 transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #CFC8B8;
+    border-radius: 3px;
+  }
+}

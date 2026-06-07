@@ -1,27 +1,22 @@
+import type { DataFetchResult } from '@/types';
+
 const NORGES_BANK_URL =
   'https://data.norges-bank.no/api/data/EXR/B.EUR.NOK.SP?format=sdmx-json&lastNObservations=1';
 
-interface NorgesBankResult {
-  rate: number | null;
-  date: string | null;
-  source: string;
-  status: 'success' | 'error' | 'manual';
-  errorMessage?: string;
+interface EurNokData {
+  rate: number;
+  date: string;
 }
 
-export async function fetchEurNokRate(): Promise<NorgesBankResult> {
-  const source = 'Norges Bank Exchange Rate API';
-
+export async function fetchEurNokRate(): Promise<DataFetchResult<EurNokData>> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const response = await fetch(NORGES_BANK_URL, {
       signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-      },
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 3600 },
     });
 
     clearTimeout(timeoutId);
@@ -30,70 +25,42 @@ export async function fetchEurNokRate(): Promise<NorgesBankResult> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const json = await response.json();
 
-    // Parse SDMX-JSON format from Norges Bank
-    // Structure: data.dataSets[0].series["0:0:0:0"].observations
-    const dataSets = data?.dataSets;
-    if (!dataSets || dataSets.length === 0) {
-      throw new Error('Ingen datasett i svaret fra Norges Bank');
-    }
+    const series = json?.dataSets?.[0]?.series;
+    if (!series) throw new Error('Ingen tidsserier i svaret fra Norges Bank');
 
-    const series = dataSets[0]?.series;
-    if (!series) {
-      throw new Error('Ingen tidsserier i svaret fra Norges Bank');
-    }
-
-    // Get the first (and only) series
-    const seriesKey = Object.keys(series)[0];
-    const observations = series[seriesKey]?.observations;
-
-    if (!observations) {
-      throw new Error('Ingen observasjoner funnet i tidsserien');
-    }
+    const observations = series[Object.keys(series)[0]]?.observations;
+    if (!observations) throw new Error('Ingen observasjoner funnet');
 
     const obsKeys = Object.keys(observations);
-    if (obsKeys.length === 0) {
-      throw new Error('Tom observasjonsliste fra Norges Bank');
-    }
+    if (obsKeys.length === 0) throw new Error('Tom observasjonsliste');
 
-    // Get the latest observation
     const latestKey = obsKeys[obsKeys.length - 1];
-    const latestObs = observations[latestKey];
-    const rate = latestObs?.[0];
+    const rate = observations[latestKey]?.[0];
 
-    if (rate === null || rate === undefined || isNaN(Number(rate))) {
-      throw new Error('Ugyldig valutakurs i svaret');
-    }
+    if (rate == null || isNaN(Number(rate))) throw new Error('Ugyldig valutakurs');
 
-    // Get date from structure
-    const structure = data?.structure;
-    const timeDimension = structure?.dimensions?.observation?.find(
+    const timeDimension = json?.structure?.dimensions?.observation?.find(
       (d: { id: string }) => d.id === 'TIME_PERIOD'
     );
-    const dateValues = timeDimension?.values || [];
-    const dateValue = dateValues[parseInt(latestKey)]?.id || dateValues[parseInt(latestKey)]?.name;
+    const dateValue =
+      timeDimension?.values?.[parseInt(latestKey)]?.id ??
+      new Date().toISOString().split('T')[0];
 
     return {
-      rate: Number(rate),
-      date: dateValue || new Date().toISOString().split('T')[0],
-      source,
+      data: { rate: Number(rate), date: dateValue },
       status: 'success',
+      source: 'Norges Bank Exchange Rate API',
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'Ukjent feil ved henting av valutakurs';
-
-    console.error('Norges Bank API error:', errorMessage);
-
+    const msg = error instanceof Error ? error.message : 'Ukjent feil';
+    console.error('Norges Bank API error:', msg);
     return {
-      rate: null,
-      date: null,
-      source,
+      data: null,
       status: 'error',
-      errorMessage: `Kunne ikke hente EUR/NOK-kurs fra Norges Bank: ${errorMessage}. Vennligst oppgi kursen manuelt.`,
+      source: 'Norges Bank Exchange Rate API',
+      errorMessage: `Kunne ikke hente EUR/NOK-kurs: ${msg}. Oppgi kursen manuelt.`,
     };
   }
 }
