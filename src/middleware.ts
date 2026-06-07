@@ -1,21 +1,33 @@
+import { jwtVerify } from 'jose';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { sessionOptions, type SessionData } from '@/lib/auth';
+
+const COOKIE_NAME = 'kampe-session';
+
+async function isAuthenticated(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  if (!token) return false;
+  try {
+    const secret = new TextEncoder().encode(process.env.SESSION_SECRET!);
+    const { payload } = await jwtVerify(token, secret);
+    return payload.isLoggedIn === true;
+  } catch {
+    return false;
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const session = await getIronSession<SessionData>(request, response, sessionOptions);
   const { pathname } = request.nextUrl;
+  const loggedIn = await isAuthenticated(request);
 
-  if (pathname.startsWith('/dashboard') && !session.isLoggedIn) {
+  if (pathname.startsWith('/dashboard') && !loggedIn) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (pathname === '/login' && session.isLoggedIn) {
+  if (pathname === '/login' && loggedIn) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
