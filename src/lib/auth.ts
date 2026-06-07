@@ -41,6 +41,13 @@ export function getSessionCookieOptions() {
   };
 }
 
-export function checkPassword(input: string): boolean {
-  return input === process.env.ADMIN_PASSWORD;
+export function checkPassword(input: string): { ok: boolean; reason?: string } {
+  const stored = process.env.ADMIN_PASSWORD;
+  if (!stored) {
+    return { ok: false, reason: 'ADMIN_PASSWORD er ikke konfigurert i Vercel.' };
+  }
+  if (input.trim() === stored.trim()) {
+    return { ok: true };
+  }
+  return { ok: false, reason: 'Feil passord. Prøv igjen.' };
 }

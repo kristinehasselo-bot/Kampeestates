@@ -3,8 +3,10 @@ import { createSessionToken, checkPassword, getSessionCookieOptions } from '@/li
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  if (!checkPassword(body?.password)) {
-    return NextResponse.json({ error: 'Feil passord. Prøv igjen.' }, { status: 401 });
+  const result = checkPassword(body?.password ?? '');
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.reason }, { status: 401 });
   }
 
   const token = await createSessionToken();
