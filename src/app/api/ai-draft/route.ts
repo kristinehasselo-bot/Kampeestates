@@ -83,10 +83,20 @@ export async function POST(request: NextRequest) {
     const msg = error instanceof Error ? error.message : 'Ukjent feil';
     console.error('AI draft error:', msg);
 
-    const isConfigError = msg.includes('ANTHROPIC_API_KEY');
-    return NextResponse.json(
-      { error: msg },
-      { status: isConfigError ? 503 : 500 }
-    );
+    if (msg.includes('ANTHROPIC_API_KEY')) {
+      return NextResponse.json(
+        { error: 'Claude AI er ikke konfigurert. Legg til ANTHROPIC_API_KEY i Vercel.' },
+        { status: 503 }
+      );
+    }
+
+    if (msg.toLowerCase().includes('credit balance') || msg.toLowerCase().includes('too low')) {
+      return NextResponse.json(
+        { error: 'Anthropic-kontoen har ikke nok kreditter. Gå til console.anthropic.com → Plans & Billing og legg til kreditter, så fungerer AI-utkastene.' },
+        { status: 402 }
+      );
+    }
+
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
