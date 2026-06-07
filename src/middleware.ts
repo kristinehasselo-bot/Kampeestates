@@ -1,32 +1,8 @@
-import { jwtVerify } from 'jose';
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-const COOKIE_NAME = 'kampe-session';
-
-async function isAuthenticated(request: NextRequest): Promise<boolean> {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  if (!token) return false;
-  try {
-    const secret = new TextEncoder().encode(process.env.SESSION_SECRET!);
-    const { payload } = await jwtVerify(token, secret);
-    return payload.isLoggedIn === true;
-  } catch {
-    return false;
-  }
-}
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const loggedIn = await isAuthenticated(request);
-
-  if (pathname.startsWith('/dashboard') && !loggedIn) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  if (pathname === '/login' && loggedIn) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
+// Auth is handled in each protected server component (dashboard/page.tsx).
+// This middleware is intentionally minimal to avoid Edge Runtime crypto issues.
+export function middleware() {
   return NextResponse.next();
 }
 
