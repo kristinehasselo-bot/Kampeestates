@@ -1,10 +1,12 @@
 'use client';
 
-import { ReportData } from '@/types';
+import { ReportData, MarketData } from '@/types';
+import { generateDraft } from '@/lib/draft-templates';
 
 interface ReportEditorProps {
   reportData: ReportData;
   onReportDataChange: (data: ReportData) => void;
+  marketData: MarketData;
 }
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
@@ -28,38 +30,32 @@ const SECTION_LABELS: Record<string, string> = {
   editorialComment: '05 · Redaksjonell vurdering',
 };
 
-const SECTION_PLACEHOLDERS: Record<string, string> = {
-  italyOverview:
-    'Det italienske boligmarkedet viser tegn til stabilisering etter en periode med moderat vekst. Boligprisindeksen (Eurostat PRC_HPI_A) for 2023 indikerer...',
-  tuscanyFocus:
-    'Toscana fortsetter å tiltrekke seg internasjonale kjøpere, særlig fra Nord-Europa og USA. Chianti-regionen og Siena-provinsen opplever...',
-  norwegianBuyers:
-    'Med en EUR/NOK-kurs på rundt [X], er kjøpekraften for norske kjøpere [sterk/svakere] enn foregående år. Det er viktig å merke seg at...',
-  areaSpotlight:
-    'Dette kvartalets fokusområde er [OMRÅDE]. Karakterisert av [beskriv landskap/arkitektur/atmosfære], tilbyr dette området...',
-  editorialComment:
-    'Etter å ha fulgt markedet nøye dette kvartalet, er min vurdering at...',
-};
-
 interface SectionEditorProps {
   sectionKey: keyof ReportData['sections'];
   label: string;
   description: string;
-  placeholder: string;
   value: string;
   onChange: (value: string) => void;
+  reportData: ReportData;
+  marketData: MarketData;
 }
 
 function SectionEditor({
   sectionKey,
   label,
   description,
-  placeholder,
   value,
   onChange,
+  reportData,
+  marketData,
 }: SectionEditorProps) {
   const charCount = value.length;
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+
+  const handleFillDraft = () => {
+    const draft = generateDraft(sectionKey, marketData, reportData);
+    if (draft) onChange(draft);
+  };
 
   return (
     <div className="space-y-2">
@@ -75,16 +71,31 @@ function SectionEditor({
             {description}
           </p>
         </div>
-        <span className="text-xs font-inter text-brand-text-muted tabular-nums flex-shrink-0">
-          {wordCount} ord
-        </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {wordCount > 0 && (
+            <span className="text-xs font-inter text-brand-text-muted tabular-nums">
+              {wordCount} ord
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleFillDraft}
+            title={value ? 'Erstatt med tekstforslag' : 'Fyll inn tekstforslag'}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-inter font-medium border border-brand-line-primary text-brand-text-secondary hover:bg-brand-bg-secondary hover:text-brand-burgundy transition-colors rounded-sm"
+          >
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            {value ? 'Nytt forslag' : 'Fyll inn forslag'}
+          </button>
+        </div>
       </div>
       <textarea
         id={`section-${sectionKey}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={sectionKey === 'editorialComment' ? 8 : 6}
+        placeholder="Klikk «Fyll inn forslag» for å få et ferdig tekstutkast som du kan redigere, eller skriv tekst direkte her."
+        rows={sectionKey === 'editorialComment' ? 10 : 8}
         className="textarea-field"
       />
       {charCount > 3000 && (
@@ -99,25 +110,25 @@ function SectionEditor({
 export default function ReportEditor({
   reportData,
   onReportDataChange,
+  marketData,
 }: ReportEditorProps) {
-  const updateSection = (
-    key: keyof ReportData['sections'],
-    value: string
-  ) => {
+  const updateSection = (key: keyof ReportData['sections'], value: string) => {
     onReportDataChange({
       ...reportData,
-      sections: {
-        ...reportData.sections,
-        [key]: value,
-      },
+      sections: { ...reportData.sections, [key]: value },
     });
   };
 
   const updateMeta = (field: keyof Omit<ReportData, 'sections' | 'manualData'>, value: string) => {
-    onReportDataChange({
-      ...reportData,
-      [field]: value,
+    onReportDataChange({ ...reportData, [field]: value });
+  };
+
+  const fillAllDrafts = () => {
+    const sections = { ...reportData.sections };
+    (Object.keys(SECTION_LABELS) as Array<keyof ReportData['sections']>).forEach((key) => {
+      sections[key] = generateDraft(key, marketData, reportData);
     });
+    onReportDataChange({ ...reportData, sections });
   };
 
   return (
@@ -186,27 +197,38 @@ export default function ReportEditor({
 
       {/* ── Report Sections ── */}
       <div>
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="font-cormorant text-xl text-brand-text-primary font-medium">
-            Rapportinnhold
-          </h2>
-          <div className="flex-1 h-px bg-brand-line-primary" />
+        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h2 className="font-cormorant text-xl text-brand-text-primary font-medium">
+              Rapportinnhold
+            </h2>
+            <div className="h-px w-16 bg-brand-line-primary" />
+          </div>
+          <button
+            type="button"
+            onClick={fillAllDrafts}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-inter font-medium bg-brand-bg-secondary border border-brand-line-primary text-brand-text-secondary hover:bg-white hover:text-brand-burgundy hover:border-brand-burgundy transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Fyll inn alle tekstforslag
+          </button>
         </div>
 
         <div className="space-y-8">
-          {(Object.keys(SECTION_LABELS) as Array<keyof ReportData['sections']>).map(
-            (key) => (
-              <SectionEditor
-                key={key}
-                sectionKey={key}
-                label={SECTION_LABELS[key]}
-                description={SECTION_DESCRIPTIONS[key]}
-                placeholder={SECTION_PLACEHOLDERS[key]}
-                value={reportData.sections[key]}
-                onChange={(value) => updateSection(key, value)}
-              />
-            )
-          )}
+          {(Object.keys(SECTION_LABELS) as Array<keyof ReportData['sections']>).map((key) => (
+            <SectionEditor
+              key={key}
+              sectionKey={key}
+              label={SECTION_LABELS[key]}
+              description={SECTION_DESCRIPTIONS[key]}
+              value={reportData.sections[key]}
+              onChange={(value) => updateSection(key, value)}
+              reportData={reportData}
+              marketData={marketData}
+            />
+          ))}
         </div>
       </div>
     </div>

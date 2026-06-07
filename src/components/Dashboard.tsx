@@ -386,6 +386,7 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                 <ReportEditor
                   reportData={reportData}
                   onReportDataChange={setReportData}
+                  marketData={effectiveMarketData}
                 />
               )}
               {activeTab === 'archive' && (
