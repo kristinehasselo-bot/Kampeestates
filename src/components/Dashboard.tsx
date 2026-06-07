@@ -23,7 +23,7 @@ function getDefaultReportData(): ReportData {
   return {
     edition: `Q${quarter} ${year}`,
     date: now.toISOString().split('T')[0],
-    areaSpotlight: 'Chianti',
+    areaSpotlight: '',
     sections: {
       italyOverview: '',
       tuscanyFocus: '',
@@ -56,19 +56,24 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
   // Manual overrides stored as strings for input compatibility
   const [manualEurNok, setManualEurNok] = useState('');
   const [manualHPI, setManualHPI] = useState('');
+  const [manualItalyPrice, setManualItalyPrice] = useState('');
   const [manualTuscanyPrice, setManualTuscanyPrice] = useState('');
   const [propertyPrices, setPropertyPrices] = useState<PropertyPrices>({
     villa: '', apartment: '', rustico: '', farm: '',
+    italyVilla: '', italyApartment: '',
   });
 
   // Sync manual data back into reportData for PDF generation and draft templates
   const syncManualData = useCallback(
-    (eurNok: string, hpi: string, tuscany: string, pp: PropertyPrices) => {
+    (eurNok: string, hpi: string, tuscany: string, italy: string, pp: PropertyPrices) => {
       setReportData((prev) => ({
         ...prev,
         manualData: {
           eurNok: eurNok ? parseFloat(eurNok) : undefined,
           italyHPI: hpi ? parseFloat(hpi) : undefined,
+          italyAvgPrice: italy ? parseFloat(italy) : undefined,
+          italyVilla: pp.italyVilla ? parseFloat(pp.italyVilla) : undefined,
+          italyApartment: pp.italyApartment ? parseFloat(pp.italyApartment) : undefined,
           tuscanyAvgPrice: tuscany ? parseFloat(tuscany) : undefined,
           tuscanyVilla: pp.villa ? parseFloat(pp.villa) : undefined,
           tuscanyApartment: pp.apartment ? parseFloat(pp.apartment) : undefined,
@@ -82,22 +87,27 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
 
   const handleManualEurNokChange = (value: string) => {
     setManualEurNok(value);
-    syncManualData(value, manualHPI, manualTuscanyPrice, propertyPrices);
+    syncManualData(value, manualHPI, manualTuscanyPrice, manualItalyPrice, propertyPrices);
   };
 
   const handleManualHPIChange = (value: string) => {
     setManualHPI(value);
-    syncManualData(manualEurNok, value, manualTuscanyPrice, propertyPrices);
+    syncManualData(manualEurNok, value, manualTuscanyPrice, manualItalyPrice, propertyPrices);
+  };
+
+  const handleManualItalyPriceChange = (value: string) => {
+    setManualItalyPrice(value);
+    syncManualData(manualEurNok, manualHPI, manualTuscanyPrice, value, propertyPrices);
   };
 
   const handleManualTuscanyPriceChange = (value: string) => {
     setManualTuscanyPrice(value);
-    syncManualData(manualEurNok, manualHPI, value, propertyPrices);
+    syncManualData(manualEurNok, manualHPI, value, manualItalyPrice, propertyPrices);
   };
 
   const handlePropertyPricesChange = (pp: PropertyPrices) => {
     setPropertyPrices(pp);
-    syncManualData(manualEurNok, manualHPI, manualTuscanyPrice, pp);
+    syncManualData(manualEurNok, manualHPI, manualTuscanyPrice, manualItalyPrice, pp);
   };
 
   const handleRefreshData = async () => {
@@ -245,7 +255,7 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
     },
   };
 
-  const hasManualInputs = manualEurNok || manualHPI || manualTuscanyPrice;
+  const hasManualInputs = manualEurNok || manualHPI || manualItalyPrice || manualTuscanyPrice;
   const autoSuccessCount = [
     marketData.eurNok.status === 'success' ? 1 : 0,
     marketData.italyHPI.status === 'success' ? 1 : 0,
@@ -386,10 +396,12 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                     marketData={marketData}
                     manualEurNok={manualEurNok}
                     manualHPI={manualHPI}
+                    manualItalyPrice={manualItalyPrice}
                     manualTuscanyPrice={manualTuscanyPrice}
                     propertyPrices={propertyPrices}
                     onManualEurNokChange={handleManualEurNokChange}
                     onManualHPIChange={handleManualHPIChange}
+                    onManualItalyPriceChange={handleManualItalyPriceChange}
                     onManualTuscanyPriceChange={handleManualTuscanyPriceChange}
                     onPropertyPricesChange={handlePropertyPricesChange}
                   />
@@ -731,7 +743,7 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                     }`}
                   />
                   <span className="text-brand-text-muted">
-                    Eurostat (HPI Italia)
+                    OECD (HPI Italia)
                   </span>
                 </li>
                 <li className="flex items-center gap-2 text-xs font-inter">

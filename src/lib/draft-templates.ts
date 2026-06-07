@@ -28,7 +28,11 @@ export function generateDraft(
   const rustico   = md.tuscanyRustico;
   const farm      = md.tuscanyFarm;
 
-  const area    = reportData.areaSpotlight || 'Val d\'Orcia';
+  const italyPrice    = md.italyAvgPrice;
+  const italyVilla    = md.italyVilla;
+  const italyApartment = md.italyApartment;
+
+  const area    = reportData.areaSpotlight;
   const edition = reportData.edition || '';
 
   const rateStr  = rate != null ? `${fmt(rate, 4)} NOK` : '[EUR/NOK-kurs]';
@@ -43,7 +47,7 @@ export function generateDraft(
       : 'en svak prisnedgang'
     : 'en endring i prisnivå';
 
-  // Build property type table text if any prices are filled in
+  // Build property type blocks for Tuscany and Italy national
   const propLines: string[] = [];
   if (villa)     propLines.push(`• Villa / luksusbolig: ${priceStr(villa)}`);
   if (apartment) propLines.push(`• Leilighet / appartamento: ${priceStr(apartment)}`);
@@ -53,11 +57,23 @@ export function generateDraft(
     ? `\n\nSnittpriser Toscana per eiendomstype:\n${propLines.join('\n')}`
     : '';
 
+  const italyPriceStr = italyPrice != null
+    ? `${Math.round(italyPrice).toLocaleString('nb-NO')} EUR/kvm`
+    : null;
+  const italyPropLines: string[] = [];
+  if (italyVilla)     italyPropLines.push(`• Villa / luksusbolig: ${priceStr(italyVilla)}`);
+  if (italyApartment) italyPropLines.push(`• Leilighet: ${priceStr(italyApartment)}`);
+  const italyPropBlock = italyPropLines.length > 0
+    ? `\n\nNasjonale snittpriser Italia per eiendomstype:\n${italyPropLines.join('\n')}`
+    : '';
+
   switch (section) {
     case 'italyOverview':
       return `Det italienske boligmarkedet viser${
         hpi != null ? ` ${hpiTrend} med ${hpiStr}` : ''
-      } ifølge Eurostats boligprisindeks for Italia. Sammenlignet med mange andre europeiske markeder har Italia hatt en relativt dempet prisutvikling de siste årene, noe som delvis skyldes lavere urbaniseringsgrad, høy eierboligandel og begrenset nybygging i de mest attraktive regionene.
+      } ifølge OECDs boligprisindeks for Italia. Sammenlignet med mange andre europeiske markeder har Italia hatt en relativt dempet prisutvikling de siste årene, noe som delvis skyldes lavere urbaniseringsgrad, høy eierboligandel og begrenset nybygging i de mest attraktive regionene.${
+        italyPriceStr ? `\n\nGjennomsnittlig kvadratmeterpris for boligeiendommer i Italia nasjonalt ligger rundt ${italyPriceStr}, med betydelige regionale variasjoner – fra lavere prisnivå i Sør-Italia til vesentlig høyere priser i de mest attraktive regionene.` : ''
+      }${italyPropBlock}
 
 Luksussegmentet skiller seg imidlertid markant fra det generelle markedet. I Toscana, Umbria og langs kysten i Puglia og Sicilia opplever vi fortsatt sterk etterspørsel fra internasjonale kjøpere, særlig fra Nord-Europa, USA og Midtøsten. Tilbudet av historiske eiendommer av høy kvalitet er begrenset, noe som understøtter prisnivået selv i perioder med svakere generell veksttakt.
 
@@ -73,10 +89,10 @@ Politisk stabilitet, gunstige skatteordninger for tilflyttere (særlig «Regime 
       }${propPriceBlock}
 
 De mest attraktive markedene internt i Toscana inkluderer:
-• **Chianti Classico**: Høy etterspørsel, begrenset tilbud av topp-eiendommer. Kombinert med prestisjefylt vinstatus er dette fremdeles det mest konkurranseutsatte segmentet.
-• **Siena-provinsen og Val d'Orcia**: UNESCO-vernede landskap, stabil prisutvikling og sterk appell til kjøpere som søker autentisk toskansk karakter.
-• **Arezzo og Casentino**: Lavere prisnivå enn Chianti, men voksende interesse fra kjøpere som ønsker mer areal for pengene.
+• **Val d'Orcia og Siena-provinsen**: UNESCO-vernede landskap, stabil prisutvikling og sterk appell til kjøpere som søker autentisk toskansk karakter. Kjerneområdet for klassisk toskansk eiendom.
+• **Chianti Classico**: Høy etterspørsel og begrenset tilbud av topp-eiendommer. Prestisjefylt vinstatus understøtter prisnivået, særlig for restaurerte casali og villaer.
 • **Lucca og Versilia**: Populær kombinasjon av kyst og hinterland, etterspurt av internasjonale kjøpere – særlig britiske og skandinaviske.
+• **Arezzo og Casentino**: Lavere prisnivå enn Chianti og Val d'Orcia, men voksende interesse fra kjøpere som ønsker mer areal for pengene.
 • **Maremma og Monte Argentario**: Kysteiendommer med stor leiepotensiell, tiltrekker seg kjøpere med fokus på investering og utleie.
 
 Markedet for casali (bondegårder) og rustici (rå landeiendommer med potensial) er særlig aktivt. Mange kjøpere ser verdien i eiendommer som kan rehabiliteres, men prosessen krever solid planlegging med lokale fagfolk og i samarbeid med kulturminnemyndighetene (Soprintendenza).`;
@@ -105,6 +121,9 @@ Alle kjøpere – uavhengig av nasjonalitet – må ha et italiensk personnummer
 **Gevinstbeskatning:** 26 % på gevinst ved salg innen 5 år etter kjøp. Etter 5 år er gevinsten skattefri i Italia. Norsk skatt etter norske regler gjelder i tillegg, men dobbeltbeskatningsavtalen mellom Norge og Italia sikrer normalt kreditering av skatt betalt i Italia.`;
 
     case 'areaSpotlight':
+      if (!area) {
+        return 'Fyll inn et fokusområde i feltet «Områdesøkelys» ovenfor for å generere dette utkastet.';
+      }
       return `${area} er ${edition ? `dette ${edition}-kvartalets` : 'dette kvartalets'} fokusområde – og med god grunn. Området representerer noe av det beste Toscana har å by på: et autentisk kulturlandskap, sterk lokal identitet og et eiendomsmarked med begrenset tilbud av kvalitetsobjekter.
 
 Geografisk er ${area} kjennetegnet av kuperte åser, sypresser, olivenlunder og vinranker som har definert toskansk identitet i hundrevis av år. Infrastrukturen er god, med tilgang til nærmeste by innen rimelig kjøreavstand og flyplass innen 1–2 timers reisetid, samtidig som området bevarer en rolig, lite overturistisk atmosfære.

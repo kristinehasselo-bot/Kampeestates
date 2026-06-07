@@ -85,6 +85,9 @@ export interface ReportData {
   manualData: {
     eurNok?: number;
     italyHPI?: number;
+    italyAvgPrice?: number;
+    italyVilla?: number;
+    italyApartment?: number;
     tuscanyAvgPrice?: number;
     tuscanyVilla?: number;
     tuscanyApartment?: number;

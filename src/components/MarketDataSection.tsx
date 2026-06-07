@@ -4,20 +4,26 @@ import { MarketData } from '@/types';
 import DataStatusBadge from './DataStatusBadge';
 
 export interface PropertyPrices {
+  // Tuscany
   villa: string;
   apartment: string;
   rustico: string;
   farm: string;
+  // Italy national
+  italyVilla: string;
+  italyApartment: string;
 }
 
 interface MarketDataSectionProps {
   marketData: MarketData;
   manualEurNok: string;
   manualHPI: string;
+  manualItalyPrice: string;
   manualTuscanyPrice: string;
   propertyPrices: PropertyPrices;
   onManualEurNokChange: (value: string) => void;
   onManualHPIChange: (value: string) => void;
+  onManualItalyPriceChange: (value: string) => void;
   onManualTuscanyPriceChange: (value: string) => void;
   onPropertyPricesChange: (prices: PropertyPrices) => void;
 }
@@ -61,21 +67,21 @@ export default function MarketDataSection({
   marketData,
   manualEurNok,
   manualHPI,
+  manualItalyPrice,
   manualTuscanyPrice,
   propertyPrices,
   onManualEurNokChange,
   onManualHPIChange,
+  onManualItalyPriceChange,
   onManualTuscanyPriceChange,
   onPropertyPricesChange,
 }: MarketDataSectionProps) {
   const { eurNok, italyHPI, tuscanyData } = marketData;
 
-  // Extract nested data fields once
   const eurNokRate = eurNok.data?.rate ?? null;
   const eurNokDate = eurNok.data?.date ?? null;
   const hpiValue = italyHPI.data?.value ?? null;
   const hpiPeriod = italyHPI.data?.period ?? null;
-  const hpiYoy = italyHPI.data?.yearOnYear ?? null;
   const tuscanyPrice = tuscanyData.data?.avgPricePerSqm ?? null;
 
   const eurNokDisplay = manualEurNok
@@ -120,7 +126,7 @@ export default function MarketDataSection({
             }
           />
           <StatCard
-            label="Boligprisvekst Italia (Eurostat)"
+            label="Boligprisvekst Italia (OECD)"
             value={hpiDisplay}
             sub={hpiPeriod || (manualHPI ? 'Manuelt oppgitt' : undefined)}
           />
@@ -153,7 +159,7 @@ export default function MarketDataSection({
         ) : (
           <DataStatusBadge
             status={eurNok.status}
-            message={eurNok.errorMessage ?? 'Klarte ikke å hente EUR/NOK-kurs fra Norges Bank. Bruk manuell overstyring nedenfor.'}
+            message={eurNok.errorMessage ?? 'Klarte ikke å hente EUR/NOK-kurs. Bruk manuell overstyring nedenfor.'}
           />
         )}
         <div>
@@ -195,7 +201,7 @@ export default function MarketDataSection({
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            Boligprisvekst Italia – årsendring (Eurostat)
+            Boligprisvekst Italia – årsendring (OECD)
           </h3>
           <DataStatusBadge status={italyHPI.status} compact message={italyHPI.errorMessage} />
         </div>
@@ -214,7 +220,7 @@ export default function MarketDataSection({
         ) : (
           <DataStatusBadge
             status={italyHPI.status}
-            message={italyHPI.errorMessage ?? 'Klarte ikke å hente boligprisindeks fra Eurostat. Bruk manuell overstyring nedenfor.'}
+            message={italyHPI.errorMessage ?? 'Klarte ikke å hente boligprisindeks. Bruk manuell overstyring nedenfor.'}
           />
         )}
         <div>
@@ -245,11 +251,11 @@ export default function MarketDataSection({
 
       <hr className="divider" />
 
-      {/* ── Tuscany data section ── */}
-      <div className="space-y-4">
+      {/* ── Eiendomspriser Italy + Tuscany ── */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            Toscana markedsdata – priser per eiendomstype (EUR/kvm)
+            Eiendomspriser per type – Italia og Toscana (EUR/kvm)
           </h3>
           <DataStatusBadge status="manual" compact label="Manuell inndata" />
         </div>
@@ -258,55 +264,114 @@ export default function MarketDataSection({
           message="Legg inn snittpriser fra OMI (Agenzia delle Entrate) eller Banca d'Italia. Klikk kildelenkene nedenfor for å hente siste tall."
         />
 
-        {/* Average / overall */}
+        {/* ── Italia nasjonalt ── */}
         <div>
-          <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
-            Toscana gjennomsnitt alle typer (EUR/kvm)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              step="100"
-              min="0"
-              placeholder="f.eks. 2800"
-              value={manualTuscanyPrice}
-              onChange={(e) => onManualTuscanyPriceChange(e.target.value)}
-              className="input-field max-w-xs"
-            />
-            {manualTuscanyPrice && (
-              <button type="button" onClick={() => onManualTuscanyPriceChange('')}
-                className="text-xs text-brand-text-muted hover:text-brand-burgundy transition-colors font-inter">
-                Tilbakestill
-              </button>
-            )}
+          <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider mb-3">
+            Italia nasjonalt
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
+                Italia gjennomsnitt alle typer (EUR/kvm)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="100"
+                  min="0"
+                  placeholder="f.eks. 1800"
+                  value={manualItalyPrice}
+                  onChange={(e) => onManualItalyPriceChange(e.target.value)}
+                  className="input-field max-w-xs"
+                />
+                {manualItalyPrice && (
+                  <button type="button" onClick={() => onManualItalyPriceChange('')}
+                    className="text-xs text-brand-text-muted hover:text-brand-burgundy transition-colors font-inter">
+                    Tilbakestill
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                { key: 'italyVilla' as const, label: 'Villa / Luksusbolig', placeholder: 'f.eks. 3500' },
+                { key: 'italyApartment' as const, label: 'Leilighet / Appartamento', placeholder: 'f.eks. 1600' },
+              ] as const).map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
+                    {label} (EUR/kvm)
+                  </label>
+                  <input
+                    type="number"
+                    step="50"
+                    min="0"
+                    placeholder={placeholder}
+                    value={propertyPrices[key]}
+                    onChange={(e) =>
+                      onPropertyPricesChange({ ...propertyPrices, [key]: e.target.value })
+                    }
+                    className="input-field w-full"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Property types grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {([
-            { key: 'villa' as const, label: 'Villa / Luksusbolig', placeholder: 'f.eks. 4500' },
-            { key: 'apartment' as const, label: 'Leilighet / Appartamento', placeholder: 'f.eks. 2200' },
-            { key: 'rustico' as const, label: 'Rustico / Casale', placeholder: 'f.eks. 2600' },
-            { key: 'farm' as const, label: 'Tenuta / Agriturismo', placeholder: 'f.eks. 1800' },
-          ] as const).map(({ key, label, placeholder }) => (
-            <div key={key}>
+        {/* ── Toscana ── */}
+        <div>
+          <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider mb-3">
+            Toscana
+          </p>
+          <div className="space-y-3">
+            <div>
               <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
-                {label} (EUR/kvm)
+                Toscana gjennomsnitt alle typer (EUR/kvm)
               </label>
-              <input
-                type="number"
-                step="50"
-                min="0"
-                placeholder={placeholder}
-                value={propertyPrices[key]}
-                onChange={(e) =>
-                  onPropertyPricesChange({ ...propertyPrices, [key]: e.target.value })
-                }
-                className="input-field w-full"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="100"
+                  min="0"
+                  placeholder="f.eks. 2800"
+                  value={manualTuscanyPrice}
+                  onChange={(e) => onManualTuscanyPriceChange(e.target.value)}
+                  className="input-field max-w-xs"
+                />
+                {manualTuscanyPrice && (
+                  <button type="button" onClick={() => onManualTuscanyPriceChange('')}
+                    className="text-xs text-brand-text-muted hover:text-brand-burgundy transition-colors font-inter">
+                    Tilbakestill
+                  </button>
+                )}
+              </div>
             </div>
-          ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                { key: 'villa' as const, label: 'Villa / Luksusbolig', placeholder: 'f.eks. 4500' },
+                { key: 'apartment' as const, label: 'Leilighet / Appartamento', placeholder: 'f.eks. 2200' },
+                { key: 'rustico' as const, label: 'Rustico / Casale', placeholder: 'f.eks. 2600' },
+                { key: 'farm' as const, label: 'Tenuta / Agriturismo', placeholder: 'f.eks. 1800' },
+              ] as const).map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
+                    {label} (EUR/kvm)
+                  </label>
+                  <input
+                    type="number"
+                    step="50"
+                    min="0"
+                    placeholder={placeholder}
+                    value={propertyPrices[key]}
+                    onChange={(e) =>
+                      onPropertyPricesChange({ ...propertyPrices, [key]: e.target.value })
+                    }
+                    className="input-field w-full"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-brand-text-muted font-inter leading-relaxed">

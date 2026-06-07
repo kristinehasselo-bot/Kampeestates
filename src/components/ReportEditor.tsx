@@ -186,7 +186,7 @@ export default function ReportEditor({
               type="text"
               value={reportData.areaSpotlight}
               onChange={(e) => updateMeta('areaSpotlight', e.target.value)}
-              placeholder="f.eks. Chianti, Siena, Val d'Orcia"
+              placeholder="f.eks. Val d'Orcia, Siena, Maremma"
               className="input-field"
             />
           </div>
