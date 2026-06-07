@@ -74,9 +74,9 @@ export default function MarketDataSection({
     : 'Ikke tilgjengelig';
 
   const hpiDisplay = manualHPI
-    ? parseFloat(manualHPI).toFixed(1)
+    ? `${parseFloat(manualHPI) >= 0 ? '+' : ''}${parseFloat(manualHPI).toFixed(1)}%`
     : hpiValue !== null
-    ? hpiValue.toFixed(1)
+    ? `${hpiValue >= 0 ? '+' : ''}${hpiValue.toFixed(1)}%`
     : 'Ikke tilgjengelig';
 
   const tuscanyDisplay = manualTuscanyPrice
@@ -109,10 +109,9 @@ export default function MarketDataSection({
             }
           />
           <StatCard
-            label="Italia HPI (Eurostat)"
+            label="Boligprisvekst Italia (Eurostat)"
             value={hpiDisplay}
             sub={hpiPeriod || (manualHPI ? 'Manuelt oppgitt' : undefined)}
-            trend={hpiYoy}
           />
           <StatCard
             label="Toscana gjennomsnittspris"
@@ -185,25 +184,21 @@ export default function MarketDataSection({
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="font-inter text-sm font-semibold text-brand-text-secondary uppercase tracking-wider">
-            Italia boligprisindeks (Eurostat)
+            Boligprisvekst Italia – årsendring (Eurostat)
           </h3>
           <DataStatusBadge status={italyHPI.status} compact message={italyHPI.errorMessage} />
         </div>
         {italyHPI.status === 'success' && hpiValue !== null ? (
           <div className="bg-brand-bg-secondary border border-brand-line-secondary p-3 text-sm font-inter text-brand-text-secondary">
-            <span className="font-medium text-brand-text-primary">
-              HPI: {hpiValue.toFixed(1)}
+            <span
+              className={`font-medium ${hpiValue >= 0 ? 'text-emerald-700' : 'text-red-700'}`}
+            >
+              {hpiValue >= 0 ? '▲' : '▼'} {hpiValue >= 0 ? '+' : ''}{hpiValue.toFixed(1)}% boligprisvekst
             </span>
             {hpiPeriod && (
               <span className="text-brand-text-muted ml-2">· Periode: {hpiPeriod}</span>
             )}
-            {hpiYoy !== null && (
-              <span
-                className={`ml-2 font-medium ${hpiYoy >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
-              >
-                · {hpiYoy >= 0 ? '+' : ''}{hpiYoy}% ÅoÅ
-              </span>
-            )}
+            <span className="text-brand-text-muted ml-2">· Kilde: {italyHPI.source}</span>
           </div>
         ) : (
           <DataStatusBadge
@@ -213,14 +208,13 @@ export default function MarketDataSection({
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
-            Manuell overstyring (HPI-verdi)
+            Manuell overstyring (årsendring i %)
           </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
               step="0.1"
-              min="0"
-              placeholder={hpiValue !== null ? hpiValue.toFixed(1) : 'f.eks. 115.2'}
+              placeholder={hpiValue !== null ? hpiValue.toFixed(1) : 'f.eks. 3.2'}
               value={manualHPI}
               onChange={(e) => onManualHPIChange(e.target.value)}
               className="input-field max-w-xs"

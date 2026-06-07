@@ -1,12 +1,10 @@
 'use client';
 
-import { ReportData, MarketData } from '@/types';
-import AIDraftButton from './AIDraftButton';
+import { ReportData } from '@/types';
 
 interface ReportEditorProps {
   reportData: ReportData;
   onReportDataChange: (data: ReportData) => void;
-  marketData: MarketData;
 }
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
@@ -50,8 +48,6 @@ interface SectionEditorProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-  reportData: ReportData;
-  marketData: MarketData;
 }
 
 function SectionEditor({
@@ -61,13 +57,9 @@ function SectionEditor({
   placeholder,
   value,
   onChange,
-  reportData,
-  marketData,
 }: SectionEditorProps) {
   const charCount = value.length;
-  const wordCount = value.trim()
-    ? value.trim().split(/\s+/).length
-    : 0;
+  const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
 
   return (
     <div className="space-y-2">
@@ -83,17 +75,9 @@ function SectionEditor({
             {description}
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs font-inter text-brand-text-muted tabular-nums">
-            {wordCount} ord
-          </span>
-          <AIDraftButton
-            section={sectionKey}
-            reportData={reportData}
-            marketData={marketData}
-            onDraftGenerated={onChange}
-          />
-        </div>
+        <span className="text-xs font-inter text-brand-text-muted tabular-nums flex-shrink-0">
+          {wordCount} ord
+        </span>
       </div>
       <textarea
         id={`section-${sectionKey}`}
@@ -115,7 +99,6 @@ function SectionEditor({
 export default function ReportEditor({
   reportData,
   onReportDataChange,
-  marketData,
 }: ReportEditorProps) {
   const updateSection = (
     key: keyof ReportData['sections'],
@@ -221,8 +204,6 @@ export default function ReportEditor({
                 placeholder={SECTION_PLACEHOLDERS[key]}
                 value={reportData.sections[key]}
                 onChange={(value) => updateSection(key, value)}
-                reportData={reportData}
-                marketData={marketData}
               />
             )
           )}
