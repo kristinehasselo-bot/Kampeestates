@@ -1,11 +1,38 @@
 import type { DataFetchResult, RateHistoryPoint } from '@/types';
 
-const NORGES_BANK_URL =
-  'https://data.norges-bank.no/api/data/EXR/B.EUR.NOK.SP?format=sdmx-json&lastNObservations=1';
+// ECB Data Portal — D.NOK.EUR.SP00.A = daily spot EUR/NOK average
+// Value: how many NOK per 1 EUR (e.g. 11.52)
+const ECB_SPOT_URL =
+  'https://data-api.ecb.europa.eu/service/data/EXR/D.NOK.EUR.SP00.A?format=jsondata&lastNObservations=1';
 
 interface EurNokData {
   rate: number;
   date: string;
+}
+
+function parseEcbSdmxJson(json: any): { rate: number; date: string } {
+  const series = json?.dataSets?.[0]?.series;
+  if (!series) throw new Error('Ingen tidsserier i svaret fra ECB');
+
+  const seriesKey = Object.keys(series)[0];
+  const observations = series[seriesKey]?.observations;
+  if (!observations) throw new Error('Ingen observasjoner funnet');
+
+  const obsKeys = Object.keys(observations);
+  if (obsKeys.length === 0) throw new Error('Tom observasjonsliste');
+
+  const latestKey = obsKeys[obsKeys.length - 1];
+  const rate = observations[latestKey]?.[0];
+  if (rate == null || isNaN(Number(rate))) throw new Error('Ugyldig valutakurs');
+
+  const timeDimension = json?.structure?.dimensions?.observation?.find(
+    (d: { id: string }) => d.id === 'TIME_PERIOD'
+  );
+  const dateValue =
+    timeDimension?.values?.[parseInt(latestKey)]?.id ??
+    new Date().toISOString().split('T')[0];
+
+  return { rate: Number(rate), date: dateValue };
 }
 
 export async function fetchEurNokRate(): Promise<DataFetchResult<EurNokData>> {
@@ -13,7 +40,7 @@ export async function fetchEurNokRate(): Promise<DataFetchResult<EurNokData>> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(NORGES_BANK_URL, {
+    const response = await fetch(ECB_SPOT_URL, {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
       next: { revalidate: 3600 },
@@ -26,40 +53,20 @@ export async function fetchEurNokRate(): Promise<DataFetchResult<EurNokData>> {
     }
 
     const json = await response.json();
-
-    const series = json?.dataSets?.[0]?.series;
-    if (!series) throw new Error('Ingen tidsserier i svaret fra Norges Bank');
-
-    const observations = series[Object.keys(series)[0]]?.observations;
-    if (!observations) throw new Error('Ingen observasjoner funnet');
-
-    const obsKeys = Object.keys(observations);
-    if (obsKeys.length === 0) throw new Error('Tom observasjonsliste');
-
-    const latestKey = obsKeys[obsKeys.length - 1];
-    const rate = observations[latestKey]?.[0];
-
-    if (rate == null || isNaN(Number(rate))) throw new Error('Ugyldig valutakurs');
-
-    const timeDimension = json?.structure?.dimensions?.observation?.find(
-      (d: { id: string }) => d.id === 'TIME_PERIOD'
-    );
-    const dateValue =
-      timeDimension?.values?.[parseInt(latestKey)]?.id ??
-      new Date().toISOString().split('T')[0];
+    const { rate, date } = parseEcbSdmxJson(json);
 
     return {
-      data: { rate: Number(rate), date: dateValue },
+      data: { rate, date },
       status: 'success',
-      source: 'Norges Bank Exchange Rate API',
+      source: 'ECB (European Central Bank) – EUR/NOK dagskurs',
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Ukjent feil';
-    console.error('Norges Bank API error:', msg);
+    console.error('ECB EUR/NOK API error:', msg);
     return {
       data: null,
       status: 'error',
-      source: 'Norges Bank Exchange Rate API',
+      source: 'ECB (European Central Bank) – EUR/NOK dagskurs',
       errorMessage: `Kunne ikke hente EUR/NOK-kurs: ${msg}. Oppgi kursen manuelt.`,
     };
   }
@@ -75,11 +82,11 @@ export async function fetchEurNokHistory(): Promise<
 
     const fmt = (d: Date) => d.toISOString().split('T')[0];
     const url =
-      `https://data.norges-bank.no/api/data/EXR/B.EUR.NOK.SP?format=sdmx-json` +
+      `https://data-api.ecb.europa.eu/service/data/EXR/D.NOK.EUR.SP00.A?format=jsondata` +
       `&startPeriod=${fmt(startDate)}&endPeriod=${fmt(endDate)}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -96,9 +103,10 @@ export async function fetchEurNokHistory(): Promise<
     const json = await response.json();
 
     const series = json?.dataSets?.[0]?.series;
-    if (!series) throw new Error('Ingen tidsserier i svaret fra Norges Bank');
+    if (!series) throw new Error('Ingen tidsserier i svaret fra ECB');
 
-    const observations = series[Object.keys(series)[0]]?.observations;
+    const seriesKey = Object.keys(series)[0];
+    const observations = series[seriesKey]?.observations;
     if (!observations) throw new Error('Ingen observasjoner funnet');
 
     const timeDimension = json?.structure?.dimensions?.observation?.find(
@@ -123,21 +131,20 @@ export async function fetchEurNokHistory(): Promise<
 
     if (points.length === 0) throw new Error('Ingen historikkpunkter funnet');
 
-    const avg90d =
-      points.reduce((sum, p) => sum + p.rate, 0) / points.length;
+    const avg90d = points.reduce((sum, p) => sum + p.rate, 0) / points.length;
 
     return {
       data: { points, avg90d: Math.round(avg90d * 10000) / 10000 },
       status: 'success',
-      source: 'Norges Bank Exchange Rate API (90 dager)',
+      source: 'ECB (European Central Bank) – EUR/NOK 90 dager',
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Ukjent feil';
-    console.error('Norges Bank history API error:', msg);
+    console.error('ECB EUR/NOK history API error:', msg);
     return {
       data: null,
       status: 'error',
-      source: 'Norges Bank Exchange Rate API (90 dager)',
+      source: 'ECB (European Central Bank) – EUR/NOK 90 dager',
       errorMessage: `Kunne ikke hente EUR/NOK historikk: ${msg}`,
     };
   }

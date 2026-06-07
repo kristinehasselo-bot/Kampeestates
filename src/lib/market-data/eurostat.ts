@@ -1,7 +1,7 @@
 import type { DataFetchResult } from '@/types';
 
 const EUROSTAT_URL =
-  'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hpi_a?geo=IT&unit=I15_A';
+  'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hpi_a?freq=A&unit=I15_A&geo=IT';
 
 interface ItalyHPIData {
   value: number;
