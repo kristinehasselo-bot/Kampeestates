@@ -1,10 +1,12 @@
 'use client';
 
-import { ReportData } from '@/types';
+import { ReportData, MarketData } from '@/types';
+import AIDraftButton from './AIDraftButton';
 
 interface ReportEditorProps {
   reportData: ReportData;
   onReportDataChange: (data: ReportData) => void;
+  marketData: MarketData;
 }
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
@@ -48,6 +50,8 @@ interface SectionEditorProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
+  reportData: ReportData;
+  marketData: MarketData;
 }
 
 function SectionEditor({
@@ -57,6 +61,8 @@ function SectionEditor({
   placeholder,
   value,
   onChange,
+  reportData,
+  marketData,
 }: SectionEditorProps) {
   const charCount = value.length;
   const wordCount = value.trim()
@@ -66,7 +72,7 @@ function SectionEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2 flex-wrap">
-        <div>
+        <div className="flex-1">
           <label
             htmlFor={`section-${sectionKey}`}
             className="block text-xs font-inter font-semibold text-brand-burgundy uppercase tracking-widest mb-0.5"
@@ -77,10 +83,16 @@ function SectionEditor({
             {description}
           </p>
         </div>
-        <div className="text-right flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <span className="text-xs font-inter text-brand-text-muted tabular-nums">
             {wordCount} ord
           </span>
+          <AIDraftButton
+            section={sectionKey}
+            reportData={reportData}
+            marketData={marketData}
+            onDraftGenerated={onChange}
+          />
         </div>
       </div>
       <textarea
@@ -103,6 +115,7 @@ function SectionEditor({
 export default function ReportEditor({
   reportData,
   onReportDataChange,
+  marketData,
 }: ReportEditorProps) {
   const updateSection = (
     key: keyof ReportData['sections'],
@@ -208,6 +221,8 @@ export default function ReportEditor({
                 placeholder={SECTION_PLACEHOLDERS[key]}
                 value={reportData.sections[key]}
                 onChange={(value) => updateSection(key, value)}
+                reportData={reportData}
+                marketData={marketData}
               />
             )
           )}

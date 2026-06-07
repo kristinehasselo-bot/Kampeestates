@@ -41,6 +41,36 @@ export interface NotionProperty {
   url: string | null;
 }
 
+export interface NewsArticle {
+  title: string;
+  description: string | null;
+  url: string;
+  publishedAt: string;
+  source: string;
+}
+
+export interface KnowledgeBaseArticle {
+  id: string;
+  title: string;
+  content: string;
+  url: string | null;
+  lastEdited: string;
+}
+
+export interface RateHistoryPoint {
+  date: string;
+  rate: number;
+}
+
+export interface ArchiveEntry {
+  id: string;
+  edition: string;
+  date: string;
+  areaSpotlight: string;
+  createdAt: string;
+  notionUrl: string | null;
+}
+
 export interface ReportData {
   edition: string;
   date: string;

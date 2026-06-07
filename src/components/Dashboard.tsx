@@ -2,16 +2,19 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { MarketData, ReportData } from '@/types';
+import { MarketData, ReportData, ArchiveEntry } from '@/types';
 import MarketDataSection from './MarketDataSection';
 import ReportEditor from './ReportEditor';
 import GenerateButton from './GenerateButton';
+import NewsSection from './NewsSection';
+import RateHistoryCard from './RateHistoryCard';
+import EmailModal from './EmailModal';
 
 interface DashboardProps {
   initialMarketData: MarketData;
 }
 
-type ActiveTab = 'data' | 'editor' | 'preview';
+type ActiveTab = 'data' | 'editor' | 'archive';
 
 function getDefaultReportData(): ReportData {
   const now = new Date();
@@ -39,6 +42,16 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('data');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Email modal
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+
+  // Archive
+  const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[]>([]);
+  const [archiveStatus, setArchiveStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'not_configured'>('idle');
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [isSavingToArchive, setIsSavingToArchive] = useState(false);
+  const [archiveSaveResult, setArchiveSaveResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Manual overrides stored as strings for input compatibility
   const [manualEurNok, setManualEurNok] = useState('');
@@ -101,6 +114,67 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
     }
   };
 
+  const handleSaveToArchive = async () => {
+    setIsSavingToArchive(true);
+    setArchiveSaveResult(null);
+    try {
+      const response = await fetch('/api/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportData }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setArchiveSaveResult({
+          success: true,
+          message: `Rapport lagret til arkiv${data.notionUrl ? ' – se Notion' : ''}.`,
+        });
+      } else {
+        setArchiveSaveResult({
+          success: false,
+          message: data.error ?? 'Klarte ikke å lagre til arkiv.',
+        });
+      }
+    } catch (err) {
+      setArchiveSaveResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'Nettverksfeil.',
+      });
+    } finally {
+      setIsSavingToArchive(false);
+    }
+  };
+
+  const handleLoadArchive = async () => {
+    setArchiveStatus('loading');
+    setArchiveError(null);
+    try {
+      const response = await fetch('/api/archive');
+      const data = await response.json();
+      if (response.ok) {
+        setArchiveEntries(data.entries ?? []);
+        setArchiveStatus(data.status ?? 'success');
+        if (data.status === 'not_configured') {
+          setArchiveError(data.errorMessage ?? null);
+        }
+      } else {
+        setArchiveStatus('error');
+        setArchiveError(data.error ?? 'Klarte ikke å hente arkiv.');
+      }
+    } catch (err) {
+      setArchiveStatus('error');
+      setArchiveError(err instanceof Error ? err.message : 'Nettverksfeil.');
+    }
+  };
+
+  // Load archive when switching to archive tab
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    if (tab === 'archive' && archiveStatus === 'idle') {
+      handleLoadArchive();
+    }
+  };
+
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     {
       id: 'data',
@@ -117,6 +191,15 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
       icon: (
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'archive',
+      label: 'Arkiv',
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
         </svg>
       ),
     },
@@ -270,7 +353,7 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 px-5 py-3 text-sm font-inter font-medium transition-colors border-b-2 -mb-px ${
                     activeTab === tab.id
                       ? 'border-brand-burgundy text-brand-burgundy'
@@ -286,21 +369,131 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
             {/* Tab content */}
             <div>
               {activeTab === 'data' && (
-                <MarketDataSection
-                  marketData={marketData}
-                  manualEurNok={manualEurNok}
-                  manualHPI={manualHPI}
-                  manualTuscanyPrice={manualTuscanyPrice}
-                  onManualEurNokChange={handleManualEurNokChange}
-                  onManualHPIChange={handleManualHPIChange}
-                  onManualTuscanyPriceChange={handleManualTuscanyPriceChange}
-                />
+                <>
+                  <MarketDataSection
+                    marketData={marketData}
+                    manualEurNok={manualEurNok}
+                    manualHPI={manualHPI}
+                    manualTuscanyPrice={manualTuscanyPrice}
+                    onManualEurNokChange={handleManualEurNokChange}
+                    onManualHPIChange={handleManualHPIChange}
+                    onManualTuscanyPriceChange={handleManualTuscanyPriceChange}
+                  />
+                  <NewsSection />
+                </>
               )}
               {activeTab === 'editor' && (
                 <ReportEditor
                   reportData={reportData}
                   onReportDataChange={setReportData}
+                  marketData={effectiveMarketData}
                 />
+              )}
+              {activeTab === 'archive' && (
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-6">
+                    <h2 className="font-cormorant text-xl text-brand-text-primary font-medium">
+                      Rapportarkiv
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={handleLoadArchive}
+                      disabled={archiveStatus === 'loading'}
+                      className="flex items-center gap-1.5 text-xs font-inter text-brand-text-muted hover:text-brand-text-primary transition-colors border border-brand-line-primary px-3 py-1.5"
+                    >
+                      <svg
+                        className={`h-3.5 w-3.5 ${archiveStatus === 'loading' ? 'animate-spin' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Oppdater
+                    </button>
+                  </div>
+
+                  {archiveStatus === 'loading' && (
+                    <div className="flex items-center gap-2 py-8 text-brand-text-muted">
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="text-sm font-inter">Henter arkiv…</span>
+                    </div>
+                  )}
+
+                  {(archiveStatus === 'not_configured' || archiveStatus === 'error') && (
+                    <div className={`px-5 py-4 text-sm font-inter leading-relaxed border ${
+                      archiveStatus === 'not_configured'
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-red-50 border-red-200 text-red-700'
+                    }`}>
+                      {archiveError ?? 'Klarte ikke å hente arkiv.'}
+                    </div>
+                  )}
+
+                  {archiveStatus === 'success' && archiveEntries.length === 0 && (
+                    <div className="bg-brand-bg-secondary border border-brand-line-secondary px-5 py-8 text-center">
+                      <p className="font-inter text-sm text-brand-text-muted">
+                        Ingen lagrede rapporter ennå.
+                      </p>
+                      <p className="font-inter text-xs text-brand-text-muted mt-1">
+                        Bruk &quot;Lagre til arkiv&quot; i sidepanelet for å arkivere rapporter.
+                      </p>
+                    </div>
+                  )}
+
+                  {archiveStatus === 'success' && archiveEntries.length > 0 && (
+                    <div className="border border-brand-line-secondary">
+                      <div className="bg-brand-burgundy px-5 py-3 flex gap-4 text-xs font-inter font-semibold text-white uppercase tracking-wider">
+                        <span className="flex-1">Utgave</span>
+                        <span className="w-28">Dato</span>
+                        <span className="w-32 hidden sm:block">Fokusområde</span>
+                        <span className="w-28 hidden md:block">Opprettet</span>
+                        <span className="w-16 text-right">Lenke</span>
+                      </div>
+                      {archiveEntries.map((entry, idx) => (
+                        <div
+                          key={entry.id}
+                          className={`flex items-center gap-4 px-5 py-3 border-b border-brand-line-secondary last:border-b-0 ${
+                            idx % 2 === 1 ? 'bg-brand-bg-secondary' : 'bg-white'
+                          }`}
+                        >
+                          <span className="flex-1 text-sm font-inter font-medium text-brand-text-primary">
+                            {entry.edition}
+                          </span>
+                          <span className="w-28 text-xs font-inter text-brand-text-muted">
+                            {entry.date
+                              ? new Date(entry.date).toLocaleDateString('nb-NO')
+                              : '–'}
+                          </span>
+                          <span className="w-32 text-xs font-inter text-brand-text-muted hidden sm:block truncate">
+                            {entry.areaSpotlight}
+                          </span>
+                          <span className="w-28 text-xs font-inter text-brand-text-muted hidden md:block">
+                            {entry.createdAt
+                              ? new Date(entry.createdAt).toLocaleDateString('nb-NO')
+                              : '–'}
+                          </span>
+                          <div className="w-16 text-right">
+                            {entry.notionUrl ? (
+                              <a
+                                href={entry.notionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-inter text-brand-burgundy hover:underline"
+                              >
+                                Notion →
+                              </a>
+                            ) : (
+                              <span className="text-xs font-inter text-brand-text-muted">–</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -363,7 +556,63 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                 reportData={reportData}
                 marketData={effectiveMarketData}
               />
+
+              {/* Email & Archive actions */}
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-inter font-medium border border-brand-line-primary text-brand-text-secondary hover:bg-brand-bg-secondary transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Send e-post
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveToArchive}
+                  disabled={isSavingToArchive}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-inter font-medium border transition-colors ${
+                    isSavingToArchive
+                      ? 'border-brand-line-primary text-brand-text-muted cursor-not-allowed'
+                      : 'border-brand-line-primary text-brand-text-secondary hover:bg-brand-bg-secondary'
+                  }`}
+                >
+                  {isSavingToArchive ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Lagrer…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
+                      Lagre til arkiv
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Archive save feedback */}
+              {archiveSaveResult && (
+                <div
+                  className={`mt-2 px-3 py-2 text-xs font-inter leading-relaxed ${
+                    archiveSaveResult.success
+                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                      : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}
+                >
+                  {archiveSaveResult.message}
+                </div>
+              )}
             </div>
+
+            {/* EUR/NOK 90-day history */}
+            <RateHistoryCard />
 
             {/* Checklist */}
             <div className="bg-brand-bg-secondary border border-brand-line-secondary p-5">
@@ -474,7 +723,7 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
                 <li className="flex items-center gap-2 text-xs font-inter">
                   <span className="h-1.5 w-1.5 rounded-full flex-shrink-0 bg-blue-400" />
                   <span className="text-brand-text-muted">
-                    Banca d'Italia (manuell)
+                    Banca d&apos;Italia (manuell)
                   </span>
                 </li>
                 <li className="flex items-center gap-2 text-xs font-inter">
@@ -506,6 +755,14 @@ export default function Dashboard({ initialMarketData }: DashboardProps) {
           </span>
         </div>
       </footer>
+
+      {/* ── EMAIL MODAL ── */}
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        reportData={reportData}
+        marketData={effectiveMarketData}
+      />
     </div>
   );
 }
