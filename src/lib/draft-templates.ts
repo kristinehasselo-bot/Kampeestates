@@ -28,8 +28,8 @@ export function generateDraft(
   const rustico   = md.tuscanyRustico;
   const farm      = md.tuscanyFarm;
 
-  const italyPrice    = md.italyAvgPrice;
-  const italyVilla    = md.italyVilla;
+  const italyPrice     = md.italyAvgPrice;
+  const italyVilla     = md.italyVilla;
   const italyApartment = md.italyApartment;
 
   const area    = reportData.areaSpotlight;
@@ -47,7 +47,7 @@ export function generateDraft(
       : 'en svak prisnedgang'
     : 'en endring i prisnivå';
 
-  // Build property type blocks for Tuscany and Italy national
+  // Tuscany property type block
   const propLines: string[] = [];
   if (villa)     propLines.push(`• Villa / luksusbolig: ${priceStr(villa)}`);
   if (apartment) propLines.push(`• Leilighet / appartamento: ${priceStr(apartment)}`);
@@ -57,6 +57,7 @@ export function generateDraft(
     ? `\n\nSnittpriser Toscana per eiendomstype:\n${propLines.join('\n')}`
     : '';
 
+  // Italy national price block
   const italyPriceStr = italyPrice != null
     ? `${Math.round(italyPrice).toLocaleString('nb-NO')} EUR/kvm`
     : null;
@@ -71,7 +72,7 @@ export function generateDraft(
     case 'italyOverview':
       return `Det italienske boligmarkedet viser${
         hpi != null ? ` ${hpiTrend} med ${hpiStr}` : ''
-      } ifølge OECDs boligprisindeks for Italia. Sammenlignet med mange andre europeiske markeder har Italia hatt en relativt dempet prisutvikling de siste årene, noe som delvis skyldes lavere urbaniseringsgrad, høy eierboligandel og begrenset nybygging i de mest attraktive regionene.${
+      } ifølge boligprisindeksen for Italia. Sammenlignet med mange andre europeiske markeder har Italia hatt en relativt dempet prisutvikling de siste årene, noe som delvis skyldes lavere urbaniseringsgrad, høy eierboligandel og begrenset nybygging i de mest attraktive regionene.${
         italyPriceStr ? `\n\nGjennomsnittlig kvadratmeterpris for boligeiendommer i Italia nasjonalt ligger rundt ${italyPriceStr}, med betydelige regionale variasjoner – fra lavere prisnivå i Sør-Italia til vesentlig høyere priser i de mest attraktive regionene.` : ''
       }${italyPropBlock}
 
@@ -89,11 +90,11 @@ Politisk stabilitet, gunstige skatteordninger for tilflyttere (særlig «Regime 
       }${propPriceBlock}
 
 De mest attraktive markedene internt i Toscana inkluderer:
-• **Val d'Orcia og Siena-provinsen**: UNESCO-vernede landskap, stabil prisutvikling og sterk appell til kjøpere som søker autentisk toskansk karakter. Kjerneområdet for klassisk toskansk eiendom.
-• **Chianti Classico**: Høy etterspørsel og begrenset tilbud av topp-eiendommer. Prestisjefylt vinstatus understøtter prisnivået, særlig for restaurerte casali og villaer.
-• **Lucca og Versilia**: Populær kombinasjon av kyst og hinterland, etterspurt av internasjonale kjøpere – særlig britiske og skandinaviske.
-• **Arezzo og Casentino**: Lavere prisnivå enn Chianti og Val d'Orcia, men voksende interesse fra kjøpere som ønsker mer areal for pengene.
-• **Maremma og Monte Argentario**: Kysteiendommer med stor leiepotensiell, tiltrekker seg kjøpere med fokus på investering og utleie.
+• Val d'Orcia og Siena-provinsen: UNESCO-vernede landskap, stabil prisutvikling og sterk appell til kjøpere som søker autentisk toskansk karakter. Kjerneområdet for klassisk toskansk eiendom.
+• Chianti Classico: Høy etterspørsel og begrenset tilbud av topp-eiendommer. Prestisjefylt vinstatus understøtter prisnivået, særlig for restaurerte casali og villaer.
+• Lucca og Versilia: Populær kombinasjon av kyst og hinterland, etterspurt av internasjonale kjøpere – særlig britiske og skandinaviske.
+• Arezzo og Casentino: Lavere prisnivå enn Chianti og Val d'Orcia, men voksende interesse fra kjøpere som ønsker mer areal for pengene.
+• Maremma og Monte Argentario: Kysteiendommer med stor leiepotensiell, tiltrekker seg kjøpere med fokus på investering og utleie.
 
 Markedet for casali (bondegårder) og rustici (rå landeiendommer med potensial) er særlig aktivt. Mange kjøpere ser verdien i eiendommer som kan rehabiliteres, men prosessen krever solid planlegging med lokale fagfolk og i samarbeid med kulturminnemyndighetene (Soprintendenza).`;
 
@@ -108,17 +109,17 @@ Markedet for casali (bondegårder) og rustici (rå landeiendommer med potensial)
           : 'Kursforholdet mellom norske kroner og euro er en sentral faktor å følge ved planlegging av kjøp.'
       }
 
-**Juridiske og skattemessige forhold ved kjøp i Italia:**
+Juridiske og skattemessige forhold ved kjøp i Italia:
 
-Alle kjøpere – uavhengig av nasjonalitet – må ha et italiensk personnummer, **Codice Fiscale**, som enkelt utstedes av nærmeste italienske konsulat i Norge. Kjøpsprosessen gjennomføres formelt via en notarpublikum (notaio) og innebærer typisk tre steg: foreløpig avtale (Proposta d'acquisto), forpliktende privatavtale (Compromesso/Contratto preliminare) og endelig kjøpsavtale (Rogito notarile).
+Alle kjøpere – uavhengig av nasjonalitet – må ha et italiensk personnummer, Codice Fiscale, som enkelt utstedes av nærmeste italienske konsulat i Norge. Kjøpsprosessen gjennomføres formelt via en notarpublikum (notaio) og innebærer typisk tre steg: foreløpig avtale (Proposta d'acquisto), forpliktende privatavtale (Compromesso/Contratto preliminare) og endelig kjøpsavtale (Rogito notarile).
 
-**Registreringsavgift (Imposta di Registro):**
+Registreringsavgift (Imposta di Registro):
 - 9 % av matrikkelverdi for utenlandske kjøpere uten fast bopel i Italia («seconda casa»)
 - 2 % for kjøpere som melder fast adresse og oppfyller «prima casa»-kravene
 
-**Løpende eiendomsskatt (IMU):** 0,4–1,06 % av matrikkelverdi per år, fastsatt av den enkelte kommunen.
+Løpende eiendomsskatt (IMU): 0,4–1,06 % av matrikkelverdi per år, fastsatt av den enkelte kommunen.
 
-**Gevinstbeskatning:** 26 % på gevinst ved salg innen 5 år etter kjøp. Etter 5 år er gevinsten skattefri i Italia. Norsk skatt etter norske regler gjelder i tillegg, men dobbeltbeskatningsavtalen mellom Norge og Italia sikrer normalt kreditering av skatt betalt i Italia.`;
+Gevinstbeskatning: 26 % på gevinst ved salg innen 5 år etter kjøp. Etter 5 år er gevinsten skattefri i Italia. Norsk skatt etter norske regler gjelder i tillegg, men dobbeltbeskatningsavtalen mellom Norge og Italia sikrer normalt kreditering av skatt betalt i Italia.`;
 
     case 'areaSpotlight':
       if (!area) {
@@ -128,19 +129,19 @@ Alle kjøpere – uavhengig av nasjonalitet – må ha et italiensk personnummer
 
 Geografisk er ${area} kjennetegnet av kuperte åser, sypresser, olivenlunder og vinranker som har definert toskansk identitet i hundrevis av år. Infrastrukturen er god, med tilgang til nærmeste by innen rimelig kjøreavstand og flyplass innen 1–2 timers reisetid, samtidig som området bevarer en rolig, lite overturistisk atmosfære.
 
-**Eiendomsmarkedet i ${area}:**
+Eiendomsmarkedet i ${area}:
 
 Markedet domineres av et spekter fra restaurerte landbrukseiendommer (casali og poderi) til historiske villaer og, i de mer urbane kjerneområdene, palazzo-seksjoner og tavernette. Prisnivå for veletablerte objekter i god stand starter gjerne fra EUR 400 000–600 000 for mellomstore landeiendommer (400–800 kvm inkl. tomt), og strekker seg til EUR 2–5 millioner og mer for de mest eksklusive eiendommene med panoramautsikt, basseng og komplett restaurering.${
   villa || apartment || rustico
-    ? `\n\nTypiske prisnivåer for ulike objekttyper i området:${
-        villa ? `\n• Villa / luksusbolig: ${priceStr(villa)}` : ''
-      }${apartment ? `\n• Leilighet: ${priceStr(apartment)}` : ''}${
-        rustico ? `\n• Rustico / casale: ${priceStr(rustico)}` : ''
-      }${farm ? `\n• Tenuta / agriturismo: ${priceStr(farm)}` : ''}`
+    ? `\n\nTypiske prisnivåer for ulike objekttyper i området:\n${
+        villa ? `• Villa / luksusbolig: ${priceStr(villa)}\n` : ''
+      }${apartment ? `• Leilighet: ${priceStr(apartment)}\n` : ''}${
+        rustico ? `• Rustico / casale: ${priceStr(rustico)}\n` : ''
+      }${farm ? `• Tenuta / agriturismo: ${priceStr(farm)}` : ''}`
     : ''
 }
 
-**Leie- og investeringspotensial:**
+Leie- og investeringspotensial:
 
 Vellykkede ferieutleieeiendommer i ${area} kan oppnå belegg på 80–90 % i sesongen (april–oktober) og generere bruttoinntekter på EUR 50 000–150 000 per år avhengig av standard og kapasitet. For kjøpere som ønsker å kombinere eget bruk og utleie, er dette et viktig element i investeringskalkylen. Plattformer som Airbnb, Booking.com og spesialiserte luksusutleiebyråer er aktuelle kanaler.`;
 
@@ -159,7 +160,7 @@ Min anbefaling til norske kjøpere som vurderer Toscana nå: ikke vent på det p
 
 Markedet belønner dem som er forberedt og handler rasjonelt. Det er der Kämpe Estates kommer inn.
 
-*Kristine Hasselø, Kämpe Estates*`;
+Kristine Hasselø, Kämpe Estates`;
 
     default:
       return '';

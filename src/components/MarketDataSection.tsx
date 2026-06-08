@@ -218,10 +218,33 @@ export default function MarketDataSection({
             <span className="text-brand-text-muted ml-2">· Kilde: {italyHPI.source}</span>
           </div>
         ) : (
-          <DataStatusBadge
-            status={italyHPI.status}
-            message={italyHPI.errorMessage ?? 'Klarte ikke å hente boligprisindeks. Bruk manuell overstyring nedenfor.'}
-          />
+          <div className="space-y-2">
+            <DataStatusBadge
+              status={italyHPI.status}
+              message={italyHPI.errorMessage ?? 'Klarte ikke å hente boligprisindeks. Bruk manuell overstyring nedenfor.'}
+            />
+            <p className="text-xs font-inter text-brand-text-muted leading-relaxed">
+              Hent årsendringen manuelt fra{' '}
+              <a
+                href="https://ec.europa.eu/eurostat/databrowser/view/PRC_HPI_A/default/table"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-brand-burgundy hover:opacity-70"
+              >
+                Eurostat HPI-tabell
+              </a>
+              {' (velg Italia / RCH_A, siste år) eller '}
+              <a
+                href="https://www.oecd.org/en/data/indicators/housing-prices.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-brand-burgundy hover:opacity-70"
+              >
+                OECD Housing Prices
+              </a>
+              . Oppgi verdien i feltet nedenfor.
+            </p>
+          </div>
         )}
         <div>
           <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -266,9 +289,19 @@ export default function MarketDataSection({
 
         {/* ── Italia nasjonalt ── */}
         <div>
-          <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider mb-3">
-            Italia nasjonalt
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider">
+              Italia nasjonalt
+            </p>
+            <a
+              href="https://www.agenziaentrate.gov.it/portale/schede/fabbricatiterreni/omi/banche-dati/quotazioni-immobiliari"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-inter text-brand-burgundy underline hover:opacity-70"
+            >
+              Hent tall fra OMI →
+            </a>
+          </div>
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -320,9 +353,19 @@ export default function MarketDataSection({
 
         {/* ── Toscana ── */}
         <div>
-          <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider mb-3">
-            Toscana
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <p className="text-xs font-inter font-semibold text-brand-text-muted uppercase tracking-wider">
+              Toscana
+            </p>
+            <a
+              href="https://www.bancaditalia.it/pubblicazioni/sondaggio-abitazioni/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-inter text-brand-burgundy underline hover:opacity-70"
+            >
+              {"Banca d'Italia rapport →"}
+            </a>
+          </div>
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-inter font-medium text-brand-text-muted uppercase tracking-wider mb-1">
@@ -375,18 +418,25 @@ export default function MarketDataSection({
         </div>
 
         <p className="text-xs text-brand-text-muted font-inter leading-relaxed">
-          Kilder:{' '}
-          <a href="https://www.agenziaentrate.gov.it/portale/web/guest/schede/fabbricati-e-terreni/omi-osservatorio-mercato-immobiliare"
-            target="_blank" rel="noopener noreferrer"
-            className="underline hover:text-brand-burgundy transition-colors">
-            OMI – Osservatorio Mercato Immobiliare
+          Hent prisdata fra:{' '}
+          <a
+            href="https://www.agenziaentrate.gov.it/portale/schede/fabbricatiterreni/omi/banche-dati/quotazioni-immobiliari"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-brand-burgundy transition-colors"
+          >
+            OMI – Quotazioni Immobiliari
           </a>
-          {' · '}
-          <a href="https://www.bancaditalia.it/statistiche/tematiche/moneta-credito-liquidita/index.html"
-            target="_blank" rel="noopener noreferrer"
-            className="underline hover:text-brand-burgundy transition-colors">
-            {"Banca d'Italia"}
+          {' (søk på region/kommune/type) · '}
+          <a
+            href="https://www.bancaditalia.it/pubblicazioni/sondaggio-abitazioni/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-brand-burgundy transition-colors"
+          >
+            {"Banca d'Italia – Sondaggio abitazioni"}
           </a>
+          {' (kvartalsvise markedsdata)'}
         </p>
       </div>
 
