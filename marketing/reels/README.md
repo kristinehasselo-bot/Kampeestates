@@ -1,44 +1,57 @@
 # Reel — The asking price is never the price
 
-Week 1 flagship reel. `asking-price-is-never-the-price.html` is a footage-led
-9:16 template: each scene is a full-bleed **video slot** for your own clip, with
-only the script's on-screen text and the CTA baked in, set in the Kämpe Estates
-fonts (Cormorant Garamond + Inter) and the cypress-green accent `#36463B`.
+Week 1 flagship reel, built from the Notion brief. This folder contains a
+**finished, generated video** plus the code that produces it.
 
-## Add your footage
+## The deliverable
 
-Create a `clips/` folder next to the HTML and drop in five files:
+- **`asking-price-is-never-the-price.mp4`** — a ~30s, 1080×1920 (9:16) reel with
+  sound, ready to upload to Instagram. H.264 / AAC.
 
-| File | Footage (from the brief / Shot list of the week) | ~Length | On-screen text |
-|------|--------------------------------------------------|---------|----------------|
-| `clips/scene-1.mp4` | Terracotta rooftops, golden hour, slow pan | 6.5 s | "The asking price is never the price." |
-| `clips/scene-2.mp4` | Hand on a warm stone wall, then a quiet street | 7.0 s | `seconda casa` — **9%** transfer tax |
-| `clips/scene-3.mp4` | Cypress, light on the Arno | 8.5 s | (footage only) |
-| `clips/scene-4.mp4` | Back to the view, sun lower | 4.5 s | "We say so before you fall in love. Not after." |
-| `clips/scene-5.mp4` | Optional — closing view under the CTA | 4.0 s | CTA: "Save this before you start looking." |
+The five scenes in the brief describe the *background footage*, so each is
+rendered as an animated scene:
 
-Shoot vertical (9:16, 1080×1920+). Any scene without a clip shows a neutral dark
-hold and a dashed chip naming the file that belongs there. Total run ≈ 30 s.
+| # | Scene (background) | On-screen text |
+|---|--------------------|----------------|
+| 1 | Terracotta rooftops, golden hour, slow pan | "The asking price is never the price." |
+| 2 | Warm stone wall, raking light | `seconda casa` — **9%** transfer tax, not two |
+| 3 | Cypress on a ridge, light on the Arno | (footage only) |
+| 4 | The view again, sun lower | "We say so before you fall in love. Not after." |
+| 5 | Cypress-green close | CTA: "Save this before you start looking." |
 
-## Controls
+The voiceover lines run as burned-in captions for sound-off viewing, and an
+original ambient score plays underneath. Type is set in the Kämpe Estates fonts
+(Cormorant Garamond + Inter); the accent is the brief's cypress green `#36463B`.
 
-- **Captions on/off** — the voiceover is burned in as subtitles for sound-off
-  viewing. Turn off if you record real VO in Instagram.
-- **Clean view** — hides the empty-slot chips for a clean screen-recording.
+Note: the backgrounds are **stylized, animated motion graphics**, not real
+Tuscany footage. This environment has no access to stock or generated video, so
+the scenes are drawn procedurally. They read as illustrative/branded, not as
+photographic listings, which keeps the brand's trust rule intact. To swap in real
+footage later, use the interactive template below.
 
-## Export to an actual video
+## How it's generated (reproducible)
 
-This environment can't source stock footage or encode MP4, so the render step
-happens on your side once the clips are in:
+Everything runs locally, no external services:
 
-1. Open the HTML, add your clips, hit play, and screen-record the 9:16 frame; or
-2. Use it as the on-screen-text/timing layer and composite your clips under it in
-   CapCut / Premiere / your editor of choice.
+1. `generate/renderer.html` — a 1080×1920 canvas that animates the five scenes,
+   draws the on-screen text in the brand fonts, and plays a Web Audio score. It
+   records itself (canvas + audio) via `MediaRecorder` to WebM (VP9/Opus).
+2. `generate/render.cjs` — drives the renderer in Chromium and saves the WebM.
+3. WebM is transcoded to Instagram-ready MP4 (H.264/AAC) with `ffmpeg.wasm`.
 
-If you send me the clips (files or URLs on a reachable host), I can composite and
-render the final vertical video for you.
+```
+node generate/render.cjs out.webm      # render scenes + score
+# then transcode out.webm -> .mp4 (ffmpeg.wasm, H.264/AAC)
+```
 
-## Voiceover script (record in-app or as a VO track)
+## Optional: drop in your own footage
+
+`asking-price-is-never-the-price.html` is an interactive, footage-led template:
+each scene is a full-bleed video slot. Create a `clips/` folder beside it and add
+`scene-1.mp4` … `scene-5.mp4` to replace the animated backgrounds with real
+clips, then screen-record it or re-render. Shot map and VO script are below.
+
+## Voiceover script
 
 1. You see the view. The light, the stone, four hundred years of it.
 2. Here is the part no one shows you. On a second home, the transfer tax alone is nine percent. Not two.

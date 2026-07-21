@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Reel renderer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// ============================================================
+// Kämpe Estates — "The asking price is never the price"
+// Generated 9:16 reel: animated scenes + on-screen text + score,
+// recorded (video+audio) via MediaRecorder. No external services.
+// ============================================================
+const W=1080,H=1920;
+const cv=document.getElementById('c');
+const ctx=cv.getContext('2d',{alpha:false});
+
+// Brand
+const CREAM='#FBFBF8', CYPRESS='#36463B', LINE='#CFC8B8';
+const CORM='"Cormorant Garamond", Georgia, serif';
+const INTER='"Inter", system-ui, sans-serif';
+
+// ---- Scene timeline (seconds) ----
+const SCENES=[
+  {id:'rooftops', dur:6.5},
+  {id:'stone',    dur:7.0},
+  {id:'cypress',  dur:8.5},
+  {id:'view',     dur:4.5},
+  {id:'cta',      dur:4.0},
+];
+const TOTAL=SCENES.reduce((a,s)=>a+s.dur,0); // 30.5
+const FADE=0.45; // cross-fade to black at each boundary
+
+// ---- helpers ----
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const smooth=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// precomputed grain tile
+const grain=document.createElement('canvas');grain.width=grain.height=256;
+(()=>{const g=grain.getContext('2d');const im=g.createImageData(256,256);
+ for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+ g.putImageData(im,0,0);})();
+
+// procedural warm stone texture (offscreen, drawn once)
+const stone=document.createElement('canvas');stone.width=540;stone.height=960;
+(()=>{const g=stone.getContext('2d');
+ const grd=g.createLinearGradient(0,0,540,960);
+ grd.addColorStop(0,'#c9a877');grd.addColorStop(0.5,'#a07c50');grd.addColorStop(1,'#6f5334');
+ g.fillStyle=grd;g.fillRect(0,0,540,960);
+ // mottling
+ for(let i=0;i<2600;i++){const x=Math.random()*540,y=Math.random()*960,r=Math.random()*22+3;
+   g.globalAlpha=Math.random()*0.10;g.fillStyle=Math.random()>0.5?'#3c2c1c':'#e6c893';
+   g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+ // faint mortar lines (stone blocks)
+ g.globalAlpha=0.18;g.strokeStyle='#4a3620';g.lineWidth=2;
+ for(let y=60;y<960;y+=96){g.beginPath();g.moveTo(0,y+Math.sin(y)*4);g.lineTo(540,y);g.stroke();}
+ for(let y=60,row=0;y<960;y+=96,row++){for(let x=(row%2?0:96);x<540;x+=192){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+96);g.stroke();}}
+ g.globalAlpha=1;})();
+
+function vignette(strength){
+  const g=ctx.createRadialGradient(W/2,H*0.42,H*0.2,W/2,H*0.55,H*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,'+strength+')');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+function drawGrain(a){
+  ctx.globalAlpha=a;ctx.globalCompositeOperation='overlay';
+  const ox=Math.random()*256,oy=Math.random()*256;
+  for(let x=-256;x<W;x+=256)for(let y=-256;y<H;y+=256)ctx.drawImage(grain,x-ox,y-oy);
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+}
+
+// ---------- SCENES ----------
+function skyGrad(stops){const g=ctx.createLinearGradient(0,0,0,H);stops.forEach(s=>g.addColorStop(s[0],s[1]));return g;}
+
+function rooftopsScene(t,dur,sunLower){
+  const p=t/dur;
+  const zoom=lerp(1.0,1.09,smooth(p));
+  const drift=t*10;
+  // sky
+  ctx.fillStyle = sunLower
+    ? skyGrad([[0,'#f0a45f'],[0.34,'#c76a42'],[0.62,'#7a3a30'],[1,'#3a2320']])
+    : skyGrad([[0,'#f7cf92'],[0.32,'#eaa15f'],[0.6,'#c05f3c'],[1,'#5c3327']]);
+  ctx.fillRect(0,0,W,H);
+  // sun glow, descending
+  const sunY=lerp(H*0.30,H*0.52,smooth(p));
+  const sx=W*0.66;
+  const sg=ctx.createRadialGradient(sx,sunY,10,sx,sunY,sunLower?520:600);
+  sg.addColorStop(0,sunLower?'rgba(255,210,150,0.95)':'rgba(255,240,205,0.98)');
+  sg.addColorStop(0.4,'rgba(255,200,140,0.35)');sg.addColorStop(1,'rgba(255,200,140,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(W/2,H*0.62);ctx.scale(zoom,zoom);ctx.translate(-W/2,-H*0.62);
+  // distant hills
+  ctx.fillStyle=sunLower?'rgba(90,55,50,0.55)':'rgba(120,70,55,0.45)';
+  ctx.beginPath();ctx.moveTo(0,H*0.60);
+  for(let x=0;x<=W;x+=60)ctx.lineTo(x,H*0.60+Math.sin(x*0.006+1)*26);
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+  // rooftop rows (back→front), terracotta
+  const rows=[
+    {y:H*0.66,h:150,col:'#8a4a34',dx:0.3},
+    {y:H*0.72,h:180,col:'#9c5238',dx:0.6},
+    {y:H*0.80,h:220,col:'#ab5b3c',dx:1.0},
+    {y:H*0.90,h:280,col:'#7d3f2c',dx:1.6},
+  ];
+  rows.forEach((r,i)=>{
+    ctx.save();ctx.translate(-((drift*r.dx)%260),0);
+    ctx.fillStyle=r.col;
+    for(let x=-260;x<W+260;x+=180){
+      // roof block
+      ctx.fillRect(x,r.y,150,r.h);
+      // roof pitch (triangle)
+      ctx.beginPath();ctx.moveTo(x-14,r.y);ctx.lineTo(x+75,r.y-46);ctx.lineTo(x+164,r.y);ctx.closePath();ctx.fill();
+      // shadow side
+      ctx.fillStyle='rgba(0,0,0,0.14)';ctx.fillRect(x+110,r.y,40,r.h);ctx.fillStyle=r.col;
+      // ridge line highlight
+      ctx.fillStyle='rgba(255,220,170,'+(0.10-i*0.02)+')';ctx.fillRect(x,r.y,150,6);ctx.fillStyle=r.col;
+    }
+    ctx.restore();
+  });
+  ctx.restore();
+  // warm haze
+  ctx.fillStyle='rgba(255,190,120,0.06)';ctx.fillRect(0,0,W,H);
+  vignette(0.5);
+}
+
+function stoneScene(t,dur){
+  const p=t/dur;const zoom=lerp(1.12,1.28,smooth(p));
+  ctx.fillStyle='#241a12';ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(W/2,H/2);ctx.scale(zoom,zoom);ctx.translate(-W/2,-H/2);
+  ctx.translate(-t*8,0);
+  // tile the stone texture across
+  for(let x=-540;x<W+540;x+=540)for(let y=0;y<H;y+=960)ctx.drawImage(stone,x,y,540,960);
+  ctx.restore();
+  // warm side light from the left (as if late sun rakes the wall)
+  const lg=ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,'rgba(255,196,120,0.30)');lg.addColorStop(0.4,'rgba(255,170,90,0.05)');
+  lg.addColorStop(1,'rgba(20,12,8,0.55)');
+  ctx.fillStyle=lg;ctx.fillRect(0,0,W,H);
+  // soft top-down shade
+  ctx.fillStyle=skyGrad([[0,'rgba(0,0,0,0.25)'],[0.3,'rgba(0,0,0,0)'],[1,'rgba(0,0,0,0.45)']]);
+  ctx.fillRect(0,0,W,H);
+  vignette(0.55);
+}
+
+function cypressScene(t,dur){
+  const p=t/dur;const zoom=lerp(1.0,1.07,smooth(p));const drift=t*8;
+  // green-gold sky
+  ctx.fillStyle=skyGrad([[0,'#dfe0c2'],[0.34,'#b7bd8f'],[0.64,'#7d8a63'],[1,'#3c4733']]);
+  ctx.fillRect(0,0,W,H);
+  // soft light haze upper right
+  const hg=ctx.createRadialGradient(W*0.7,H*0.28,20,W*0.7,H*0.28,700);
+  hg.addColorStop(0,'rgba(255,250,220,0.6)');hg.addColorStop(1,'rgba(255,250,220,0)');
+  ctx.fillStyle=hg;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(W/2,H*0.5);ctx.scale(zoom,zoom);ctx.translate(-W/2,-H*0.5);
+  // hills
+  ctx.fillStyle='#6f7d55';ctx.beginPath();ctx.moveTo(0,H*0.55);
+  for(let x=0;x<=W;x+=50)ctx.lineTo(x,H*0.55+Math.sin(x*0.005)*30);
+  ctx.lineTo(W,H*0.72);ctx.lineTo(0,H*0.72);ctx.fill();
+  ctx.fillStyle='#55643f';ctx.beginPath();ctx.moveTo(0,H*0.60);
+  for(let x=0;x<=W;x+=50)ctx.lineTo(x,H*0.60+Math.cos(x*0.004)*22);
+  ctx.lineTo(W,H*0.75);ctx.lineTo(0,H*0.75);ctx.fill();
+  // cypress trees on ridge with parallax
+  ctx.save();ctx.translate(-((drift)%180),0);ctx.fillStyle='#2f3a28';
+  const ridge=H*0.57;
+  for(let x=-180;x<W+180;x+=150){
+    const h=180+((x*13)%70), w=34;
+    ctx.beginPath();
+    ctx.moveTo(x,ridge);
+    ctx.quadraticCurveTo(x-w/2,ridge-h*0.5,x,ridge-h);
+    ctx.quadraticCurveTo(x+w/2,ridge-h*0.5,x,ridge);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.restore();
+  // river band (Arno) lower third with animated glints
+  const ry=H*0.80, rh=H*0.20;
+  ctx.fillStyle=skyGrad([[0,'#8a9a86']]).addColorStop?null:null;
+  const rg=ctx.createLinearGradient(0,ry,0,ry+rh);
+  rg.addColorStop(0,'#9fb0a2');rg.addColorStop(1,'#5d6f63');
+  ctx.fillStyle=rg;ctx.fillRect(0,ry,W,rh);
+  ctx.save();ctx.beginPath();ctx.rect(0,ry,W,rh);ctx.clip();
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<9;i++){
+    const yy=ry+18+i*(rh/9);
+    const phase=t*1.3 + i*0.8;
+    const xx=(Math.sin(phase)*0.5+0.5)*W;
+    const gl=ctx.createRadialGradient(xx,yy,2,xx,yy,140);
+    gl.addColorStop(0,'rgba(255,252,235,0.5)');gl.addColorStop(1,'rgba(255,252,235,0)');
+    ctx.fillStyle=gl;ctx.fillRect(xx-150,yy-12,300,24);
+  }
+  ctx.restore();ctx.globalCompositeOperation='source-over';
+  vignette(0.48);
+}
+
+function ctaScene(t,dur){
+  ctx.fillStyle=CYPRESS;ctx.fillRect(0,0,W,H);
+  // subtle radial lift
+  const g=ctx.createRadialGradient(W/2,H*0.42,40,W/2,H*0.5,800);
+  g.addColorStop(0,'rgba(120,140,120,0.28)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  vignette(0.5);
+}
+
+// ---------- TEXT ----------
+function setFont(style,weight,size,family){ctx.font=`${style} ${weight} ${size}px ${family}`;}
+function drawWrapLines(lines,x,y,lh,align){ctx.textAlign=align||'left';lines.forEach((ln,i)=>ctx.fillText(ln,x,y+i*lh));}
+
+function eyebrow(text,x,y,alpha){
+  ctx.globalAlpha=alpha;ctx.fillStyle=CREAM;
+  setFont('normal',500,26,INTER);ctx.letterSpacing='6px';ctx.textAlign='left';
+  // rule
+  ctx.fillRect(x,y-9,44,3);
+  ctx.fillText(text.toUpperCase(),x+60,y);
+  ctx.letterSpacing='0px';ctx.globalAlpha=1;
+}
+function shadowOn(){ctx.shadowColor='rgba(0,0,0,0.55)';ctx.shadowBlur=30;ctx.shadowOffsetY=3;}
+function shadowOff(){ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;}
+
+function caption(text,alpha){
+  if(alpha<=0)return;
+  // bottom scrim for legibility (fades with the caption)
+  const sg=ctx.createLinearGradient(0,H*0.56,0,H);
+  sg.addColorStop(0,'rgba(0,0,0,0)');sg.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.globalAlpha=Math.min(1,alpha*1.25);ctx.fillStyle=sg;ctx.fillRect(0,H*0.56,W,H*0.44);ctx.globalAlpha=1;
+  setFont('normal',400,32,INTER);ctx.textAlign='center';ctx.letterSpacing='0px';
+  const maxW=W-120;const words=text.split(' ');const lines=[];let cur='';
+  words.forEach(w=>{const tst=cur?cur+' '+w:w;if(ctx.measureText(tst).width>maxW){lines.push(cur);cur=w;}else cur=tst;});
+  if(cur)lines.push(cur);
+  const lh=46, last=H-104, first=last-(lines.length-1)*lh;
+  ctx.globalAlpha=alpha;ctx.fillStyle=CREAM;
+  ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=12;
+  lines.forEach((ln,i)=>ctx.fillText(ln,W/2,first+i*lh));
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.globalAlpha=1;
+}
+
+// reveal envelope for a block starting at local time ts
+function rev(tl,ts){const a=smooth((tl-ts)/0.8);return a;}
+function revYo(tl,ts){return (1-smooth((tl-ts)/0.8))*18;}
+
+function textForScene(id,tl,dur){
+  if(id==='rooftops'){
+    const a1=rev(tl,0.2),a2=rev(tl,0.7);
+    eyebrow('Buying in Tuscany',80,H-474,a1);
+    shadowOn();ctx.fillStyle=CREAM;
+    setFont('normal',500,92,CORM);ctx.textAlign='left';ctx.letterSpacing='0px';
+    ctx.globalAlpha=a1;ctx.fillText('The asking price',80,H-404+(1-a1)*10);
+    ctx.globalAlpha=a2;setFont('italic',500,92,CORM);ctx.fillText('is never the price.',80,H-300+(1-a2)*10);
+    ctx.globalAlpha=1;shadowOff();
+    caption('You see the view. The light, the stone, four hundred years of it.', smooth((tl-1.4)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
+  }
+  else if(id==='stone'){
+    const a=rev(tl,0.3);
+    // fact card
+    const cx=80, cy=H-720, cw=580;
+    ctx.globalAlpha=a;
+    ctx.fillStyle='rgba(11,12,11,0.46)';ctx.fillRect(cx,cy,cw,330);
+    ctx.fillStyle=CREAM;ctx.fillRect(cx,cy,4,330);
+    setFont('italic',500,40,CORM);ctx.textAlign='left';ctx.fillStyle='rgba(251,251,248,0.9)';
+    ctx.fillText('seconda casa · second home',cx+40,cy+80);
+    shadowOn();ctx.fillStyle=CREAM;setFont('normal',600,150,CORM);
+    ctx.fillText('9%',cx+40,cy+215);shadowOff();
+    setFont('normal',400,30,INTER);ctx.fillStyle='rgba(251,251,248,0.82)';
+    ctx.fillText('transfer tax alone. Not two.',cx+40,cy+275);
+    ctx.globalAlpha=1;
+    caption('Here is the part no one shows you. On a second home, the transfer tax alone is nine percent. Not two.', smooth((tl-1.2)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
+  }
+  else if(id==='cypress'){
+    caption('Add the notary, the surveyor, the survey, the agency. Total acquisition cost runs ten to fifteen percent above asking. Every time.', smooth((tl-0.8)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
+  }
+  else if(id==='view'){
+    const a1=rev(tl,0.2),a2=rev(tl,0.7);
+    shadowOn();ctx.fillStyle=CREAM;setFont('normal',500,84,CORM);ctx.textAlign='left';ctx.letterSpacing='0px';
+    ctx.globalAlpha=a1;ctx.fillText('We say so before you',80,H-496);
+    ctx.fillText('fall in love.',80,H-398);
+    ctx.globalAlpha=a2;setFont('italic',500,84,CORM);ctx.fillText('Not after.',80,H-300);
+    ctx.globalAlpha=1;shadowOff();
+    caption('We represent the buyer only. For those who would rather know than hope.', smooth((tl-1.2)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
+  }
+  else if(id==='cta'){
+    const a1=rev(tl,0.15),a2=rev(tl,0.6);
+    ctx.textAlign='center';
+    ctx.globalAlpha=a1;ctx.fillStyle='rgba(251,251,248,0.72)';
+    setFont('normal',500,28,INTER);ctx.letterSpacing='9px';
+    ctx.fillText('KÄMPE ESTATES',W/2,H*0.36);ctx.letterSpacing='0px';
+    ctx.fillStyle='rgba(251,251,248,0.5)';ctx.fillRect(W/2-22,H*0.40,44,2);
+    ctx.fillStyle=CREAM;setFont('normal',500,92,CORM);
+    ctx.fillText('Save this',W/2,H*0.50);
+    ctx.fillText('before you start looking.',W/2,H*0.50+96);
+    ctx.globalAlpha=a2;
+    setFont('normal',400,32,INTER);ctx.fillStyle='rgba(251,251,248,0.88)';
+    ctx.fillText('The full cost breakdown is in the link in bio.',W/2,H*0.50+220);
+    // pill
+    const pt='BUYER-SIDE ONLY · TUSCANY';setFont('normal',500,26,INTER);ctx.letterSpacing='4px';
+    const pw=ctx.measureText(pt).width+64;
+    ctx.fillStyle=CREAM;roundRect(W/2-pw/2,H*0.50+280,pw,64,32);ctx.fill();
+    ctx.fillStyle='#26332a';ctx.fillText(pt,W/2,H*0.50+320);ctx.letterSpacing='0px';
+    ctx.globalAlpha=1;
+  }
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// progress bar (IG style)
+function progressBar(globalT){
+  const pad=28, gap=10, top=30, h=6;
+  const n=SCENES.length;const totalGap=gap*(n-1);const segW=(W-pad*2-totalGap)/n;
+  let acc=0;
+  for(let i=0;i<n;i++){
+    const x=pad+i*(segW+gap);
+    ctx.fillStyle='rgba(251,251,248,0.30)';roundRect(x,top,segW,h,3);ctx.fill();
+    let f=0;const s0=acc,s1=acc+SCENES[i].dur;
+    if(globalT>=s1)f=1;else if(globalT>s0)f=(globalT-s0)/SCENES[i].dur;
+    if(f>0){ctx.fillStyle=CREAM;roundRect(x,top,segW*f,h,3);ctx.fill();}
+    acc=s1;
+  }
+  // wordmark
+  ctx.fillStyle='rgba(251,251,248,0.85)';setFont('normal',500,24,INTER);ctx.textAlign='left';ctx.letterSpacing='7px';
+  ctx.fillText('KÄMPE ESTATES',pad,top+52);ctx.letterSpacing='0px';
+}
+
+// ---------- MAIN DRAW ----------
+function sceneAt(gt){let acc=0;for(let i=0;i<SCENES.length;i++){if(gt<acc+SCENES[i].dur)return{i,local:gt-acc,dur:SCENES[i].dur,id:SCENES[i].id};acc+=SCENES[i].dur;}const L=SCENES.length-1;return{i:L,local:SCENES[L].dur,dur:SCENES[L].dur,id:SCENES[L].id};}
+
+function draw(gt){
+  const s=sceneAt(gt);
+  if(s.id==='rooftops')rooftopsScene(s.local,s.dur,false);
+  else if(s.id==='stone')stoneScene(s.local,s.dur);
+  else if(s.id==='cypress')cypressScene(s.local,s.dur);
+  else if(s.id==='view')rooftopsScene(s.local,s.dur,true);
+  else if(s.id==='cta')ctaScene(s.local,s.dur);
+  // text
+  if(s.id!=='cta')progressBar(gt);
+  textForScene(s.id,s.local,s.dur);
+  if(s.id==='cta')progressBar(gt);
+  drawGrain(0.05);
+  // boundary fade to black
+  let fade=0;
+  if(s.local<FADE && s.i>0)fade=1-s.local/FADE;
+  else if(s.dur-s.local<FADE && s.i<SCENES.length-1)fade=1-(s.dur-s.local)/FADE;
+  // opening + closing fade
+  if(gt<0.5)fade=Math.max(fade,1-gt/0.5);
+  if(gt>TOTAL-0.6)fade=Math.max(fade,(gt-(TOTAL-0.6))/0.6);
+  if(fade>0){ctx.fillStyle='rgba(0,0,0,'+clamp(fade,0,1)+')';ctx.fillRect(0,0,W,H);}
+}
+
+// ---------- AUDIO SCORE ----------
+let audioCtx, masterGain, audioDest;
+function buildAudio(){
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain();masterGain.gain.value=0.0;
+  const comp=audioCtx.createDynamicsCompressor();
+  audioDest=audioCtx.createMediaStreamDestination();
+  masterGain.connect(comp);comp.connect(audioDest);comp.connect(audioCtx.destination);
+  const now=audioCtx.currentTime;
+  // fade master in
+  masterGain.gain.setValueAtTime(0.0001,now);
+  masterGain.gain.exponentialRampToValueAtTime(0.9,now+2.2);
+  masterGain.gain.setValueAtTime(0.9,now+TOTAL-2.0);
+  masterGain.gain.exponentialRampToValueAtTime(0.0001,now+TOTAL-0.1);
+
+  // low drone (A1/A2)
+  [55,110].forEach((f,i)=>{
+    const o=audioCtx.createOscillator();o.type=i?'triangle':'sine';o.frequency.value=f;o.detune.value=i?-6:4;
+    const g=audioCtx.createGain();g.gain.value=i?0.05:0.07;
+    const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;
+    o.connect(g).connect(lp).connect(masterGain);o.start(now);o.stop(now+TOTAL);
+  });
+  // warm pad chord: A minor add9 (A C E B) sustained, slow filter LFO
+  const chord=[220.0,261.63,329.63,493.88];
+  chord.forEach((f,i)=>{
+    const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=(i-1.5)*5;
+    const g=audioCtx.createGain();g.gain.value=0.018;
+    const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=700;lp.Q.value=6;
+    const lfo=audioCtx.createOscillator();lfo.frequency.value=0.06+i*0.01;
+    const lfg=audioCtx.createGain();lfg.gain.value=260;
+    lfo.connect(lfg).connect(lp.frequency);lfo.start(now);lfo.stop(now+TOTAL);
+    o.connect(g).connect(lp).connect(masterGain);o.start(now);o.stop(now+TOTAL);
+  });
+  // shimmer noise swells at scene changes
+  const boundaries=[0]; SCENES.reduce((a,s)=>{a+=s.dur;boundaries.push(a);return a;},0);
+  boundaries.slice(0,-1).forEach(bt=>{
+    const dur2=1.6;const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*dur2,audioCtx.sampleRate);
+    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1);
+    const src=audioCtx.createBufferSource();src.buffer=buf;
+    const bp=audioCtx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2400;bp.Q.value=0.8;
+    const g=audioCtx.createGain();g.gain.value=0.0;
+    const st=now+bt;
+    g.gain.setValueAtTime(0.0001,st);g.gain.linearRampToValueAtTime(0.04,st+0.6);g.gain.linearRampToValueAtTime(0.0001,st+dur2);
+    src.connect(bp).connect(g).connect(masterGain);src.start(st);src.stop(st+dur2);
+  });
+  // gentle pentatonic bell motif (A C D E G), every ~1.5s
+  const scale=[440.0,523.25,587.33,659.25,783.99,880.0];
+  const seq=[0,2,4,3,1,4,5,3,2,0,4,2,1,3,5,4,2,0,3,1];
+  let ti=0;
+  for(let k=0;k*1.5<TOTAL-2;k++){
+    const st=now+1.0+k*1.5;const f=scale[seq[ti++%seq.length]];
+    const o=audioCtx.createOscillator();o.type='sine';o.frequency.value=f;
+    const o2=audioCtx.createOscillator();o2.type='sine';o2.frequency.value=f*2;
+    const g=audioCtx.createGain();const g2=audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001,st);g.gain.exponentialRampToValueAtTime(0.10,st+0.02);g.gain.exponentialRampToValueAtTime(0.0001,st+1.4);
+    g2.gain.setValueAtTime(0.0001,st);g2.gain.exponentialRampToValueAtTime(0.03,st+0.02);g2.gain.exponentialRampToValueAtTime(0.0001,st+0.9);
+    o.connect(g).connect(masterGain);o2.connect(g2).connect(masterGain);
+    o.start(st);o.stop(st+1.5);o2.start(st);o2.stop(st+1.0);
+  }
+}
+
+// ---------- RECORD ----------
+async function run(){
+  try{await Promise.all([
+    document.fonts.load('500 96px "Cormorant Garamond"'),
+    document.fonts.load('italic 500 96px "Cormorant Garamond"'),
+    document.fonts.load('600 150px "Cormorant Garamond"'),
+    document.fonts.load('500 26px "Inter"'),
+    document.fonts.load('400 34px "Inter"'),
+  ]);}catch(e){}
+  await document.fonts.ready;
+
+  buildAudio();await audioCtx.resume();
+
+  const vstream=cv.captureStream(30);
+  const stream=new MediaStream([...vstream.getVideoTracks(),...audioDest.stream.getAudioTracks()]);
+  let mime='video/webm;codecs=vp9,opus';
+  if(!MediaRecorder.isTypeSupported(mime))mime='video/webm;codecs=vp8,opus';
+  if(!MediaRecorder.isTypeSupported(mime))mime='video/webm';
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:128000});
+  const chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  const stopped=new Promise(r=>rec.onstop=r);
+  rec.start(200);
+
+  const t0=performance.now();
+  await new Promise(res=>{
+    function frame(){
+      const gt=(performance.now()-t0)/1000;
+      draw(Math.min(gt,TOTAL));
+      if(gt>=TOTAL){res();return;}
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  });
+  rec.stop();await stopped;
+  const blob=new Blob(chunks,{type:mime});
+  const buf=new Uint8Array(await blob.arrayBuffer());
+  let bin='';for(let i=0;i<buf.length;i++)bin+=String.fromCharCode(buf[i]);
+  window.__reelB64=btoa(bin);
+  window.__reelMime=mime;
+  window.__reelDone=true;
+  document.title='DONE '+buf.length;
+}
+window.__startReel=run;
+
+// QA hook: load fonts, then draw a single frame at global time gt
+async function preload(){
+  try{await Promise.all([
+    document.fonts.load('500 96px "Cormorant Garamond"'),
+    document.fonts.load('italic 500 96px "Cormorant Garamond"'),
+    document.fonts.load('600 150px "Cormorant Garamond"'),
+    document.fonts.load('500 26px "Inter"'),
+    document.fonts.load('400 34px "Inter"'),
+  ]);}catch(e){}
+  await document.fonts.ready;
+  return {corm:document.fonts.check('500 96px "Cormorant Garamond"'),inter:document.fonts.check('500 26px "Inter"'),n:document.fonts.size};
+}
+window.__preload=preload;
+window.__drawAt=(gt)=>draw(gt);
+</script>
+</body>
+</html>
