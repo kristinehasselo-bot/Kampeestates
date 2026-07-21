@@ -11,303 +11,110 @@
   :root{
     /* Kämpe Estates design system */
     --bg-primary:#FBFBF8;
-    --bg-secondary:#F4F2EB;
-    --text-primary:#1F1F1F;
-    --text-muted:#7A7A7A;
     --olive:#3F4A3F;
     --burgundy:#4B1F26;
     --line:#CFC8B8;
-    /* Reel accent (from the brief) */
-    --cypress:#36463B;
+    --cypress:#36463B;      /* reel accent, from the brief */
     --cormorant:'Cormorant Garamond', Georgia, serif;
     --inter:'Inter', system-ui, sans-serif;
-
-    /* Timeline (seconds) — total ~30s */
-    --dur: 30s;
   }
-
   *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#0b0c0b;font-family:var(--inter);-webkit-font-smoothing:antialiased}
 
-  html,body{
-    height:100%;
-    background:#0d0f0d;
-    font-family:var(--inter);
-    color:var(--text-primary);
-    -webkit-font-smoothing:antialiased;
-  }
+  .stage{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px 16px 34px}
 
-  .stage{
-    min-height:100%;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:18px;
-    padding:24px 16px 40px;
-  }
-
-  /* 9:16 phone frame, scaled to viewport height */
+  /* 9:16 reel frame */
   .reel{
     position:relative;
-    width:min(92vw, calc((100vh - 150px) * 9 / 16));
+    width:min(94vw, calc((100vh - 150px) * 9 / 16));
     aspect-ratio:9/16;
-    background:#0d0f0d;
-    border-radius:14px;
-    overflow:hidden;
-    box-shadow:0 30px 80px rgba(0,0,0,.55);
-    user-select:none;
+    background:#0b0c0b;border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.55);user-select:none;
   }
 
-  /* ---------- Progress bar (IG-story style segments) ---------- */
-  .progress{
-    position:absolute;
-    top:14px;left:14px;right:14px;
-    display:flex;gap:5px;
-    z-index:40;
-  }
-  .seg{
-    flex:1;height:2.5px;border-radius:2px;
-    background:rgba(251,251,248,.28);
-    overflow:hidden;
-  }
-  .seg > i{
-    display:block;height:100%;width:100%;
-    background:var(--bg-primary);
-    transform:scaleX(0);transform-origin:left;
-  }
+  /* progress segments */
+  .progress{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:5px;z-index:40}
+  .seg{flex:1;height:2.5px;border-radius:2px;background:rgba(251,251,248,.28);overflow:hidden}
+  .seg > i{display:block;height:100%;width:100%;background:var(--bg-primary);transform:scaleX(0);transform-origin:left}
 
-  /* wordmark top-left */
-  .brandmark{
-    position:absolute;top:30px;left:16px;z-index:40;
-    font-family:var(--inter);
-    font-size:9px;font-weight:500;letter-spacing:.28em;
-    color:rgba(251,251,248,.85);
-    text-transform:uppercase;
-  }
+  .brandmark{position:absolute;top:30px;left:16px;z-index:40;font-size:9px;font-weight:500;letter-spacing:.28em;color:rgba(251,251,248,.9);text-transform:uppercase;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 
-  /* ---------- Scenes ---------- */
-  .scene{
-    position:absolute;inset:0;
-    opacity:0;
-    display:flex;flex-direction:column;justify-content:flex-end;
-    padding:0;
-  }
+  /* ---- scenes ---- */
+  .scene{position:absolute;inset:0;opacity:0;transition:opacity .5s ease}
   .scene.on{opacity:1}
 
-  /* Footage placeholder background (cinematic gradients approximating each shot) */
-  .footage{
-    position:absolute;inset:0;
-    transform:scale(1.06);
-    transition:none;
-  }
-  .scene.on .footage{
-    animation:kenburns var(--seg-dur, 6s) ease-out forwards;
-  }
-  @keyframes kenburns{
-    from{transform:scale(1.06)}
-    to{transform:scale(1.16)}
-  }
+  /* full-bleed video background slot (your footage goes here) */
+  .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0b0c0b}
+  /* fallback hold shown until/unless a clip is present — neutral, no text */
+  .hold{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+  .scene.missing .hold{opacity:1}
+  .scene.missing .bg{opacity:0}
+  .h-warm{background:linear-gradient(180deg,#5a4738 0%,#3a2c22 55%,#1c1512 100%)}
+  .h-stone{background:linear-gradient(180deg,#4f4436 0%,#332a20 55%,#191410 100%)}
+  .h-green{background:linear-gradient(180deg,#3a4438 0%,#28302697 55%,#141a13 100%),#1a201a}
+  .h-dusk{background:linear-gradient(180deg,#4d3a30 0%,#332420 55%,#181210 100%)}
+  .h-cta{background:linear-gradient(180deg,#45564a 0%,#36463B 55%,#26332a 100%)}
 
-  /* grain + vignette overlays shared */
-  .footage::after{
-    content:"";position:absolute;inset:0;
-    background:radial-gradient(120% 80% at 50% 25%, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%);
-  }
+  /* legibility scrim so text reads over any footage */
+  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 44%,rgba(0,0,0,.62) 100%)}
+  .scene.no-scrim .scrim{display:none}
 
-  /* golden-hour terracotta rooftops */
-  .f-rooftops{
-    background:
-      linear-gradient(180deg, #f6c98a 0%, #e79a5c 34%, #b85c3e 62%, #6d3327 100%);
+  /* empty-slot chip: shows ONLY when a clip file is missing, as an editing aid.
+     It is not part of the reel and is hidden the moment a clip loads. */
+  .slotchip{
+    position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:30;
+    display:none;align-items:center;gap:8px;
+    font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(251,251,248,.7);border:1px dashed rgba(251,251,248,.35);
+    padding:7px 12px;border-radius:999px;background:rgba(0,0,0,.25)
   }
-  /* warm stone wall / quiet street */
-  .f-stone{
-    background:
-      linear-gradient(180deg, #d9b98f 0%, #b98a5e 45%, #7c5638 78%, #3f2c1e 100%);
-  }
-  /* cypress + light on the Arno */
-  .f-cypress{
-    background:
-      linear-gradient(180deg, #cfd7c2 0%, #7f9070 34%, #46543f 66%, #232b20 100%);
-  }
-  /* back to the view, sun lower */
-  .f-dusk{
-    background:
-      linear-gradient(180deg, #efb27a 0%, #c06d4a 40%, #6f3b34 70%, #2c2320 100%);
-  }
-  /* CTA — brand cypress green */
-  .f-cta{
-    background:linear-gradient(180deg, #45564a 0%, #36463B 55%, #26332a 100%);
-  }
-  .f-cta::after{background:none}
+  .scene.missing .slotchip{display:inline-flex}
+  body.recording .slotchip{display:none !important}
 
-  /* footage label — tells Kristine exactly what to shoot here */
-  .shotlabel{
-    position:absolute;top:52px;left:16px;right:16px;z-index:30;
-    font-family:var(--inter);
-    font-size:9.5px;font-weight:500;letter-spacing:.16em;
-    text-transform:uppercase;
-    color:rgba(251,251,248,.72);
-    display:flex;align-items:center;gap:8px;
-  }
-  .shotlabel::before{
-    content:"";width:16px;height:1px;background:rgba(251,251,248,.55);flex:none;
-  }
-
-  /* text block */
-  .copy{
-    position:relative;z-index:30;
-    padding:0 26px 118px;
-  }
-
-  .eyebrow{
-    font-family:var(--inter);
-    font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;
-    color:var(--bg-primary);
-    opacity:.9;
-    margin-bottom:14px;
-    display:inline-flex;align-items:center;gap:9px;
-  }
-  .eyebrow::before{
-    content:"";width:22px;height:1.5px;background:var(--bg-primary);
-  }
-
-  .hero{
-    font-family:var(--cormorant);
-    font-weight:500;
-    color:var(--bg-primary);
-    font-size:clamp(26px, 7.6vw, 40px);
-    line-height:1.08;
-    letter-spacing:-.01em;
-    text-shadow:0 2px 24px rgba(0,0,0,.35);
-  }
+  /* ---- on-screen text (only the script's actual on-screen lines) ---- */
+  .copy{position:absolute;left:0;right:0;bottom:0;z-index:30;padding:0 28px 128px}
+  .eyebrow{font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(--bg-primary);opacity:.92;margin-bottom:14px;display:inline-flex;align-items:center;gap:9px;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+  .eyebrow::before{content:"";width:22px;height:1.5px;background:var(--bg-primary)}
+  .hero{font-family:var(--cormorant);font-weight:500;color:var(--bg-primary);font-size:clamp(28px,8vw,42px);line-height:1.08;letter-spacing:-.01em;text-shadow:0 2px 26px rgba(0,0,0,.55)}
   .hero em{font-style:italic;font-weight:500}
 
-  /* animated reveal of hero lines */
-  .scene.on .reveal{
-    animation:rise .9s cubic-bezier(.2,.7,.2,1) both;
-  }
-  .scene.on .reveal.d2{animation-delay:.5s}
-  @keyframes rise{
-    from{opacity:0;transform:translateY(16px)}
-    to{opacity:1;transform:translateY(0)}
-  }
+  .scene.on .reveal{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+  .scene.on .reveal.d2{animation-delay:.55s}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-  /* VO subtitle / caption line */
-  .vo{
-    margin-top:16px;
-    font-family:var(--inter);
-    font-size:13px;font-weight:400;line-height:1.5;
-    color:rgba(251,251,248,.9);
-    max-width:22em;
-    text-shadow:0 1px 12px rgba(0,0,0,.4);
-  }
-  .vo .lead{
-    display:block;font-size:9px;font-weight:600;letter-spacing:.22em;
-    text-transform:uppercase;color:rgba(251,251,248,.6);margin-bottom:5px;
-  }
+  /* 9% fact callout (scene 2) */
+  .fact{display:inline-flex;flex-direction:column;gap:4px;background:rgba(11,12,11,.42);border-left:2px solid var(--bg-primary);backdrop-filter:blur(3px);padding:15px 19px}
+  .fact .it{font-family:var(--cormorant);font-style:italic;font-weight:500;font-size:16px;color:rgba(251,251,248,.85)}
+  .fact .big{font-family:var(--cormorant);font-weight:600;font-size:clamp(34px,10vw,50px);line-height:1;color:var(--bg-primary)}
+  .fact .sub{font-size:11.5px;letter-spacing:.03em;color:rgba(251,251,248,.78)}
 
-  /* number / fact callout card */
-  .fact{
-    display:inline-flex;flex-direction:column;gap:4px;
-    background:rgba(13,15,13,.42);
-    border-left:2px solid var(--bg-primary);
-    backdrop-filter:blur(3px);
-    padding:14px 18px;
-    margin-bottom:16px;
-  }
-  .fact .it{
-    font-family:var(--cormorant);font-style:italic;font-weight:500;
-    font-size:15px;color:rgba(251,251,248,.82);
-  }
-  .fact .big{
-    font-family:var(--cormorant);font-weight:600;
-    font-size:clamp(30px,9vw,46px);line-height:1;color:var(--bg-primary);
-  }
-  .fact .sub{
-    font-family:var(--inter);font-size:11px;letter-spacing:.04em;
-    color:rgba(251,251,248,.72);
-  }
-
-  /* cost list on cypress scene */
-  .costs{
-    display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 4px;
-  }
-  .costs span{
-    font-family:var(--inter);font-size:11px;font-weight:400;letter-spacing:.02em;
-    color:rgba(251,251,248,.92);
-    border:1px solid rgba(251,251,248,.4);
-    padding:5px 11px;border-radius:999px;
-  }
-  .costs span em{font-style:italic;color:rgba(251,251,248,.72)}
-
-  /* ---------- CTA scene ---------- */
-  .cta{
-    position:absolute;inset:0;z-index:30;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:0 34px;gap:0;
-  }
-  .cta .mark{
-    font-family:var(--inter);font-size:10px;font-weight:500;letter-spacing:.3em;
-    text-transform:uppercase;color:rgba(251,251,248,.7);margin-bottom:26px;
-  }
+  /* ---- CTA scene ---- */
+  .cta{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 34px}
+  .cta .mark{font-size:10px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:rgba(251,251,248,.72);margin-bottom:26px}
   .cta .rule{width:34px;height:1px;background:rgba(251,251,248,.45);margin:0 auto 26px}
-  .cta h2{
-    font-family:var(--cormorant);font-weight:500;
-    font-size:clamp(28px,8vw,42px);line-height:1.12;color:var(--bg-primary);
-    letter-spacing:-.01em;
-  }
-  .cta .save{
-    margin-top:22px;font-family:var(--inter);font-size:12.5px;font-weight:400;
-    color:rgba(251,251,248,.85);line-height:1.6;
-  }
+  .cta h2{font-family:var(--cormorant);font-weight:500;font-size:clamp(30px,9vw,44px);line-height:1.12;color:var(--bg-primary);letter-spacing:-.01em}
+  .cta .save{margin-top:22px;font-size:12.5px;color:rgba(251,251,248,.88);line-height:1.6}
   .cta .save b{font-weight:600}
-  .cta .pill{
-    margin-top:24px;display:inline-flex;align-items:center;gap:8px;
-    font-family:var(--inter);font-size:10px;font-weight:500;letter-spacing:.18em;
-    text-transform:uppercase;color:#26332a;background:var(--bg-primary);
-    padding:11px 20px;border-radius:999px;
-  }
+  .cta .pill{margin-top:24px;display:inline-flex;font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#26332a;background:var(--bg-primary);padding:11px 20px;border-radius:999px}
 
-  /* saved bookmark ping */
-  .cta .bookmark{
-    margin-top:30px;color:rgba(251,251,248,.55);font-size:22px;
-    animation:pulse 1.6s ease-in-out infinite;
-  }
-  @keyframes pulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.14);opacity:1}}
+  /* ---- VO subtitles (spoken track, sound-off legibility). Toggleable. ---- */
+  .subs{position:absolute;left:0;right:0;bottom:56px;z-index:35;text-align:center;padding:0 30px;pointer-events:none}
+  .subs p{display:inline;background:rgba(0,0,0,.42);color:var(--bg-primary);font-size:13px;line-height:1.9;font-weight:400;padding:4px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+  body.subs-off .subs{display:none}
+  .scene .subs{opacity:0}
+  .scene.on .subs{opacity:1;transition:opacity .4s .2s}
 
-  /* ---------- Controls ---------- */
-  .controls{
-    display:flex;align-items:center;gap:14px;
-    color:#e9e7df;font-family:var(--inter);font-size:12px;
-  }
-  .btn{
-    appearance:none;border:1px solid rgba(233,231,223,.35);
-    background:transparent;color:#e9e7df;
-    font-family:var(--inter);font-size:12px;letter-spacing:.06em;
-    padding:9px 18px;border-radius:999px;cursor:pointer;
-    transition:background .15s,border-color .15s;
-  }
+  /* ---- controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+  .btn{appearance:none;border:1px solid rgba(233,231,223,.32);background:transparent;color:#e9e7df;font-family:var(--inter);font-size:12px;letter-spacing:.05em;padding:9px 16px;border-radius:999px;cursor:pointer;transition:background .15s,border-color .15s}
   .btn:hover{background:rgba(233,231,223,.1);border-color:rgba(233,231,223,.6)}
-  .hint{color:#8b8a83;font-size:11px;letter-spacing:.04em;max-width:min(92vw, 420px);text-align:center;line-height:1.5}
+  .btn.active{background:rgba(233,231,223,.14);border-color:rgba(233,231,223,.7)}
+  .hint{color:#8b8a83;font-size:11px;letter-spacing:.02em;max-width:min(94vw,520px);text-align:center;line-height:1.55}
 
-  /* replay overlay */
-  .replay{
-    position:absolute;inset:0;z-index:60;display:none;
-    align-items:center;justify-content:center;flex-direction:column;gap:14px;
-    background:rgba(13,15,13,.55);backdrop-filter:blur(2px);cursor:pointer;
-  }
+  .replay{position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(11,12,11,.5);backdrop-filter:blur(2px);cursor:pointer}
   .replay.show{display:flex}
-  .replay .ic{
-    width:56px;height:56px;border-radius:50%;
-    border:1.5px solid rgba(251,251,248,.85);
-    display:flex;align-items:center;justify-content:center;
-    color:var(--bg-primary);font-size:20px;
-  }
-  .replay .tx{font-family:var(--inter);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(251,251,248,.85)}
-
-  /* paused dim */
-  .reel.paused .scene.on .footage,
-  .reel.paused .seg > i{animation-play-state:paused}
+  .replay .ic{width:56px;height:56px;border-radius:50%;border:1.5px solid rgba(251,251,248,.85);display:flex;align-items:center;justify-content:center;color:var(--bg-primary);font-size:20px}
+  .replay .tx{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(251,251,248,.85)}
 </style>
 </head>
 <body>
@@ -316,176 +123,146 @@
       <div class="progress" id="progress"></div>
       <div class="brandmark">Kämpe&nbsp;Estates</div>
 
-      <!-- SCENE 1 — rooftops, golden hour -->
-      <section class="scene" data-seg="6">
-        <div class="footage f-rooftops"></div>
-        <div class="shotlabel">Terracotta rooftops · golden hour · slow pan</div>
+      <!-- SCENE 1 — footage: terracotta rooftops, golden hour, slow pan -->
+      <section class="scene" data-seg="6.5" data-clip="scene-1.mp4">
+        <video class="bg" muted playsinline preload="auto"></video>
+        <div class="hold h-warm"></div>
+        <div class="scrim"></div>
+        <span class="slotchip">clips / scene-1.mp4</span>
         <div class="copy">
           <span class="eyebrow reveal">Buying in Tuscany</span>
           <h1 class="hero"><span class="reveal">The asking price</span><br><span class="reveal d2"><em>is never the price.</em></span></h1>
-          <p class="vo reveal d2"><span class="lead">Voiceover</span>You see the view. The light, the stone, four hundred years of it.</p>
         </div>
+        <div class="subs"><p>You see the view. The light, the stone, four hundred years of it.</p></div>
       </section>
 
-      <!-- SCENE 2 — hand on stone / quiet street, the 9% fact -->
-      <section class="scene" data-seg="7">
-        <div class="footage f-stone"></div>
-        <div class="shotlabel">Hand on warm stone wall · then a quiet street</div>
+      <!-- SCENE 2 — footage: hand on warm stone wall, then a quiet street -->
+      <section class="scene" data-seg="7" data-clip="scene-2.mp4">
+        <video class="bg" muted playsinline preload="auto"></video>
+        <div class="hold h-stone"></div>
+        <div class="scrim"></div>
+        <span class="slotchip">clips / scene-2.mp4</span>
         <div class="copy">
           <div class="fact reveal">
             <span class="it">seconda casa · second home</span>
             <span class="big">9%</span>
             <span class="sub">transfer tax alone. Not two.</span>
           </div>
-          <p class="vo reveal d2"><span class="lead">Voiceover</span>Here is the part no one shows you. On a second home, the transfer tax alone is nine percent. Not two.</p>
         </div>
+        <div class="subs"><p>Here is the part no one shows you. On a second home, the transfer tax alone is nine percent. Not two.</p></div>
       </section>
 
-      <!-- SCENE 3 — cypress, light on the Arno, the full cost stack -->
-      <section class="scene" data-seg="9">
-        <div class="footage f-cypress"></div>
-        <div class="shotlabel">Cypress · light on the Arno</div>
+      <!-- SCENE 3 — footage: cypress, light on the Arno (footage-led, no headline) -->
+      <section class="scene" data-seg="8.5" data-clip="scene-3.mp4">
+        <video class="bg" muted playsinline preload="auto"></video>
+        <div class="hold h-green"></div>
+        <div class="scrim"></div>
+        <span class="slotchip">clips / scene-3.mp4</span>
+        <div class="subs"><p>Add the notary, the surveyor, the survey, the agency. Total acquisition cost runs ten to fifteen percent above asking. Every time.</p></div>
+      </section>
+
+      <!-- SCENE 4 — footage: back to the view, sun lower -->
+      <section class="scene" data-seg="4.5" data-clip="scene-4.mp4">
+        <video class="bg" muted playsinline preload="auto"></video>
+        <div class="hold h-dusk"></div>
+        <div class="scrim"></div>
+        <span class="slotchip">clips / scene-4.mp4</span>
         <div class="copy">
-          <span class="eyebrow reveal">And then the file lands</span>
-          <div class="costs reveal">
-            <span><em>il notaio</em> · notary</span>
-            <span><em>il geometra</em> · surveyor</span>
-            <span>survey</span>
-            <span>agency</span>
-          </div>
-          <h1 class="hero reveal d2" style="margin-top:14px">10 to 15% <em>above asking.</em><br>Every time.</h1>
-          <p class="vo reveal d2"><span class="lead">Voiceover</span>Add the notary, the surveyor, the survey, the agency. Total acquisition cost runs ten to fifteen percent above asking.</p>
+          <h1 class="hero"><span class="reveal">We say so before you fall in love.</span><br><span class="reveal d2"><em>Not after.</em></span></h1>
         </div>
+        <div class="subs"><p>We represent the buyer only. For those who would rather know than hope.</p></div>
       </section>
 
-      <!-- SCENE 4 — back to the view, sun lower -->
-      <section class="scene" data-seg="5">
-        <div class="footage f-dusk"></div>
-        <div class="shotlabel">Back to the view · sun lower</div>
-        <div class="copy">
-          <h1 class="hero"><span class="reveal">We say so</span><br><span class="reveal">before you fall in love.</span><br><span class="reveal d2"><em>Not after.</em></span></h1>
-          <p class="vo reveal d2" style="margin-top:18px">We represent the buyer only. For those who would rather know than hope.</p>
-        </div>
-      </section>
-
-      <!-- SCENE 5 — CTA -->
-      <section class="scene" data-seg="4">
-        <div class="footage f-cta"></div>
+      <!-- SCENE 5 — CTA (brand cypress green; optional footage slot) -->
+      <section class="scene no-scrim" data-seg="4" data-clip="scene-5.mp4">
+        <video class="bg" muted playsinline preload="auto"></video>
+        <div class="hold h-cta"></div>
+        <span class="slotchip">clips / scene-5.mp4 (optional)</span>
         <div class="cta">
           <div class="mark reveal">Kämpe&nbsp;Estates</div>
           <div class="rule reveal"></div>
           <h2 class="reveal">Save this<br>before you start looking.</h2>
           <p class="save reveal d2">The full cost breakdown is in the <b>link in bio.</b></p>
           <span class="pill reveal d2">Buyer-side only · Tuscany</span>
-          <div class="bookmark reveal d2">🔖</div>
         </div>
       </section>
 
-      <!-- replay -->
-      <div class="replay" id="replay">
-        <div class="ic">↺</div>
-        <div class="tx">Replay</div>
-      </div>
+      <div class="replay" id="replay"><div class="ic">↺</div><div class="tx">Replay</div></div>
     </div>
 
     <div class="controls">
       <button class="btn" id="playpause">Pause</button>
       <button class="btn" id="restart">Restart</button>
+      <button class="btn active" id="togglesubs">Captions: on</button>
+      <button class="btn" id="togglerec">Clean view</button>
     </div>
-    <p class="hint">9:16 reel preview in your Kämpe Estates fonts (Cormorant Garamond + Inter) and the cypress-green accent from the brief. The gradient panels are footage placeholders — the label on each marks the shot to drop in. Screen-record the frame above to capture the on-screen text layer, or use it as your edit storyboard.</p>
+    <p class="hint">Footage-led 9:16 reel. Each scene is a full-bleed video slot for your own clip; only the script's on-screen text and the CTA are baked in, set in Cormorant Garamond + Inter with the cypress-green accent. Drop <b>scene-1…scene-5.mp4</b> into a <b>clips/</b> folder beside this file and they play as the backgrounds. Captions carry the voiceover for sound-off viewing (toggle off if you record real VO). Empty slots show a dashed chip naming the file that goes there.</p>
   </div>
 
 <script>
 (function(){
-  const reel = document.getElementById('reel');
-  const scenes = Array.from(reel.querySelectorAll('.scene'));
-  const progress = document.getElementById('progress');
-  const replay = document.getElementById('replay');
-  const playpause = document.getElementById('playpause');
-  const restart = document.getElementById('restart');
+  const reel=document.getElementById('reel');
+  const scenes=Array.from(reel.querySelectorAll('.scene'));
+  const progress=document.getElementById('progress');
+  const replay=document.getElementById('replay');
+  const playpause=document.getElementById('playpause');
+  const restart=document.getElementById('restart');
+  const togglesubs=document.getElementById('togglesubs');
+  const togglerec=document.getElementById('togglerec');
 
-  const durations = scenes.map(s => parseFloat(s.dataset.seg) * 1000);
+  const durations=scenes.map(s=>parseFloat(s.dataset.seg)*1000);
 
-  // build progress segments
-  const bars = scenes.map(() => {
-    const seg = document.createElement('div');
-    seg.className = 'seg';
-    const i = document.createElement('i');
-    seg.appendChild(i);
-    progress.appendChild(seg);
-    return i;
+  // wire each scene's video slot to clips/<file>; if it can't load, mark missing
+  scenes.forEach(s=>{
+    const v=s.querySelector('video.bg');
+    const file=s.dataset.clip;
+    s.classList.add('missing');            // assume empty until a clip loads
+    if(!v||!file) return;
+    v.src='clips/'+file;
+    v.load();
+    v.addEventListener('loadeddata',()=>{ s.classList.remove('missing'); },{once:true});
+    v.addEventListener('error',()=>{ s.classList.add('missing'); });
   });
 
-  let idx = 0, startTime = 0, raf = null, paused = false, elapsedAtPause = 0;
+  const bars=scenes.map(()=>{const seg=document.createElement('div');seg.className='seg';const i=document.createElement('i');seg.appendChild(i);progress.appendChild(seg);return i;});
 
-  function setSegVar(scene, ms){
-    scene.style.setProperty('--seg-dur', (ms/1000) + 's');
+  let idx=0,startTime=0,raf=null,paused=false,elapsedAtPause=0;
+
+  function playVideo(n){
+    const v=scenes[n].querySelector('video.bg');
+    if(v&&v.readyState>=2){ try{v.currentTime=0;v.play().catch(()=>{});}catch(e){} }
   }
+  function stopVideo(n){ const v=scenes[n].querySelector('video.bg'); if(v){try{v.pause();}catch(e){}} }
 
   function showScene(n){
-    scenes.forEach((s,i)=> s.classList.toggle('on', i===n));
-    setSegVar(scenes[n], durations[n]);
-    bars.forEach((b,i)=>{
-      b.style.transition = 'none';
-      b.style.transform = i < n ? 'scaleX(1)' : 'scaleX(0)';
-    });
+    scenes.forEach((s,i)=>{ s.classList.toggle('on',i===n); if(i!==n) stopVideo(i); });
+    playVideo(n);
+    bars.forEach((b,i)=>{ b.style.transition='none'; b.style.transform= i<n?'scaleX(1)':'scaleX(0)'; });
   }
-
   function tick(now){
     if(paused) return;
-    if(!startTime) startTime = now;
-    const el = now - startTime + elapsedAtPause;
-    const dur = durations[idx];
-    const p = Math.min(el/dur, 1);
-    bars[idx].style.transition = 'none';
-    bars[idx].style.transform = 'scaleX(' + p + ')';
-    if(p >= 1){
-      idx++;
-      if(idx >= scenes.length){ finish(); return; }
-      startTime = 0; elapsedAtPause = 0;
-      showScene(idx);
-    }
-    raf = requestAnimationFrame(tick);
+    if(!startTime) startTime=now;
+    const el=now-startTime+elapsedAtPause;
+    const p=Math.min(el/durations[idx],1);
+    bars[idx].style.transition='none'; bars[idx].style.transform='scaleX('+p+')';
+    if(p>=1){ idx++; if(idx>=scenes.length){ finish(); return; } startTime=0; elapsedAtPause=0; showScene(idx); }
+    raf=requestAnimationFrame(tick);
   }
-
-  function finish(){
-    cancelAnimationFrame(raf);
-    replay.classList.add('show');
-    playpause.textContent = 'Play';
-    paused = true;
-  }
-
-  function start(){
-    idx = 0; startTime = 0; elapsedAtPause = 0; paused = false;
-    replay.classList.remove('show');
-    reel.classList.remove('paused');
-    playpause.textContent = 'Pause';
-    showScene(0);
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(tick);
-  }
-
+  function finish(){ cancelAnimationFrame(raf); stopVideo(idx-1<0?0:scenes.length-1); replay.classList.add('show'); playpause.textContent='Play'; paused=true; }
+  function start(){ idx=0;startTime=0;elapsedAtPause=0;paused=false;replay.classList.remove('show');playpause.textContent='Pause';showScene(0);cancelAnimationFrame(raf);raf=requestAnimationFrame(tick); }
   function togglePause(){
     if(replay.classList.contains('show')){ start(); return; }
-    paused = !paused;
-    reel.classList.toggle('paused', paused);
-    if(paused){
-      // capture elapsed
-      elapsedAtPause = elapsedAtPause + (performance.now() - startTime);
-      startTime = 0;
-      playpause.textContent = 'Play';
-      cancelAnimationFrame(raf);
-    } else {
-      playpause.textContent = 'Pause';
-      raf = requestAnimationFrame(tick);
-    }
+    paused=!paused;
+    if(paused){ elapsedAtPause=elapsedAtPause+(performance.now()-startTime); startTime=0; playpause.textContent='Play'; cancelAnimationFrame(raf); stopVideo(idx); }
+    else{ playpause.textContent='Pause'; playVideo(idx); raf=requestAnimationFrame(tick); }
   }
 
-  replay.addEventListener('click', start);
-  restart.addEventListener('click', start);
-  playpause.addEventListener('click', togglePause);
+  replay.addEventListener('click',start);
+  restart.addEventListener('click',start);
+  playpause.addEventListener('click',togglePause);
+  togglesubs.addEventListener('click',()=>{ document.body.classList.toggle('subs-off'); const off=document.body.classList.contains('subs-off'); togglesubs.textContent='Captions: '+(off?'off':'on'); togglesubs.classList.toggle('active',!off); });
+  togglerec.addEventListener('click',()=>{ document.body.classList.toggle('recording'); togglerec.classList.toggle('active',document.body.classList.contains('recording')); });
 
-  // kick off
   start();
 })();
 </script>
