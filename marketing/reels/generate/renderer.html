@@ -423,8 +423,8 @@ async function run(){
 
   const vstream=cv.captureStream(30);
   const stream=new MediaStream([...vstream.getVideoTracks(),...audioDest.stream.getAudioTracks()]);
-  let mime='video/webm;codecs=vp9,opus';
-  if(!MediaRecorder.isTypeSupported(mime))mime='video/webm;codecs=vp8,opus';
+  // Prefer VP8 — far faster to decode when transcoding to MP4 downstream.
+  let mime='video/webm;codecs=vp8,opus';
   if(!MediaRecorder.isTypeSupported(mime))mime='video/webm';
   const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:128000});
   const chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
