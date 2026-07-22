@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>Reel renderer</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
 </head>
 <body>
 <canvas id="c" width="1080" height="1920"></canvas>
@@ -16,7 +16,7 @@
 // ============================================================
 const W=1080,H=1920;
 const cv=document.getElementById('c');
-const ctx=cv.getContext('2d',{alpha:false});
+const ctx=cv.getContext('2d',{alpha:true});
 
 // Brand
 const CREAM='#FBFBF8', CYPRESS='#36463B', LINE='#CFC8B8';
@@ -208,8 +208,6 @@ function ctaScene(t,dur){
 
 // ---------- TEXT ----------
 function setFont(style,weight,size,family){ctx.font=`${style} ${weight} ${size}px ${family}`;}
-// dark outline + fill so chroma-keyed text edges read clean (no magenta fringe)
-function strokeFill(txt,x,y,lw){const sc=ctx.shadowColor,sb=ctx.shadowBlur;ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.lineJoin='round';ctx.miterLimit=2;ctx.lineWidth=lw;ctx.strokeStyle='#141513';ctx.strokeText(txt,x,y);ctx.shadowColor=sc;ctx.shadowBlur=sb;ctx.fillText(txt,x,y);}
 function drawWrapLines(lines,x,y,lh,align){ctx.textAlign=align||'left';lines.forEach((ln,i)=>ctx.fillText(ln,x,y+i*lh));}
 
 function eyebrow(text,x,y,alpha){
@@ -217,27 +215,27 @@ function eyebrow(text,x,y,alpha){
   setFont('normal',500,26,INTER);ctx.letterSpacing='6px';ctx.textAlign='left';
   // rule
   ctx.fillRect(x,y-9,44,3);
-  strokeFill(text.toUpperCase(),x+60,y,4);
+  ctx.fillText(text.toUpperCase(),x+60,y);
   ctx.letterSpacing='0px';ctx.globalAlpha=1;
 }
-function shadowOn(){ctx.shadowColor='rgba(0,0,0,0.85)';ctx.shadowBlur=8;ctx.shadowOffsetY=2;}
+function shadowOn(){ctx.shadowColor='rgba(0,0,0,0.55)';ctx.shadowBlur=30;ctx.shadowOffsetY=3;}
 function shadowOff(){ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;}
 
 function caption(text,alpha){
   if(alpha<=0)return;
+  // bottom scrim for legibility (fades with the caption)
+  const sg=ctx.createLinearGradient(0,H*0.56,0,H);
+  sg.addColorStop(0,'rgba(0,0,0,0)');sg.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.globalAlpha=Math.min(1,alpha*1.25);ctx.fillStyle=sg;ctx.fillRect(0,H*0.56,W,H*0.44);ctx.globalAlpha=1;
   setFont('normal',400,32,INTER);ctx.textAlign='center';ctx.letterSpacing='0px';
-  const maxW=W-160;const words=text.split(' ');const lines=[];let cur='';
+  const maxW=W-120;const words=text.split(' ');const lines=[];let cur='';
   words.forEach(w=>{const tst=cur?cur+' '+w:w;if(ctx.measureText(tst).width>maxW){lines.push(cur);cur=w;}else cur=tst;});
   if(cur)lines.push(cur);
   const lh=46, last=H-104, first=last-(lines.length-1)*lh;
-  // OPAQUE rounded bar behind captions so it survives chroma keying cleanly
-  let bw=0; lines.forEach(ln=>bw=Math.max(bw,ctx.measureText(ln).width));
-  const barX=W/2-bw/2-28, barY=first-42, barW=bw+56, barH=(lines.length-1)*lh+64;
-  ctx.globalAlpha=alpha;
-  ctx.fillStyle='#141513';roundRect(barX,barY,barW,barH,14);ctx.fill();
-  ctx.fillStyle=CREAM;
+  ctx.globalAlpha=alpha;ctx.fillStyle=CREAM;
+  ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=12;
   lines.forEach((ln,i)=>ctx.fillText(ln,W/2,first+i*lh));
-  ctx.globalAlpha=1;
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.globalAlpha=1;
 }
 
 // reveal envelope for a block starting at local time ts
@@ -250,8 +248,8 @@ function textForScene(id,tl,dur){
     eyebrow('Buying in Tuscany',80,H-474,a1);
     shadowOn();ctx.fillStyle=CREAM;
     setFont('normal',500,92,CORM);ctx.textAlign='left';ctx.letterSpacing='0px';
-    ctx.globalAlpha=a1;strokeFill('The asking price',80,H-404+(1-a1)*10,7);
-    ctx.globalAlpha=a2;setFont('italic',500,92,CORM);strokeFill('is never the price.',80,H-300+(1-a2)*10,7);
+    ctx.globalAlpha=a1;ctx.fillText('The asking price',80,H-404+(1-a1)*10);
+    ctx.globalAlpha=a2;setFont('italic',500,92,CORM);ctx.fillText('is never the price.',80,H-300+(1-a2)*10);
     ctx.globalAlpha=1;shadowOff();
     caption('You see the view. The light, the stone, four hundred years of it.', smooth((tl-1.4)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
   }
@@ -260,7 +258,7 @@ function textForScene(id,tl,dur){
     // fact card
     const cx=80, cy=H-720, cw=580;
     ctx.globalAlpha=a;
-    ctx.fillStyle='#141513';ctx.fillRect(cx,cy,cw,330);
+    ctx.fillStyle='rgba(11,12,11,0.46)';ctx.fillRect(cx,cy,cw,330);
     ctx.fillStyle=CREAM;ctx.fillRect(cx,cy,4,330);
     setFont('italic',500,40,CORM);ctx.textAlign='left';ctx.fillStyle='rgba(251,251,248,0.9)';
     ctx.fillText('seconda casa · second home',cx+40,cy+80);
@@ -277,9 +275,9 @@ function textForScene(id,tl,dur){
   else if(id==='view'){
     const a1=rev(tl,0.2),a2=rev(tl,0.7);
     shadowOn();ctx.fillStyle=CREAM;setFont('normal',500,84,CORM);ctx.textAlign='left';ctx.letterSpacing='0px';
-    ctx.globalAlpha=a1;strokeFill('We say so before you',80,H-496,7);
-    strokeFill('fall in love.',80,H-398,7);
-    ctx.globalAlpha=a2;setFont('italic',500,84,CORM);strokeFill('Not after.',80,H-300,7);
+    ctx.globalAlpha=a1;ctx.fillText('We say so before you',80,H-496);
+    ctx.fillText('fall in love.',80,H-398);
+    ctx.globalAlpha=a2;setFont('italic',500,84,CORM);ctx.fillText('Not after.',80,H-300);
     ctx.globalAlpha=1;shadowOff();
     caption('We represent the buyer only. For those who would rather know than hope.', smooth((tl-1.2)/0.8)*(tl>dur-0.5?smooth((dur-tl)/0.5):1));
   }
@@ -320,25 +318,25 @@ function progressBar(globalT){
     acc=s1;
   }
   // wordmark
-  ctx.fillStyle='rgba(251,251,248,0.92)';setFont('normal',500,24,INTER);ctx.textAlign='left';ctx.letterSpacing='7px';
-  if(SCENES[sceneAt(globalT).i].id!=='cta')strokeFill('KÄMPE ESTATES',pad,top+52,3);else ctx.fillText('KÄMPE ESTATES',pad,top+52);
-  ctx.letterSpacing='0px';
+  ctx.fillStyle='rgba(251,251,248,0.85)';setFont('normal',500,24,INTER);ctx.textAlign='left';ctx.letterSpacing='7px';
+  ctx.fillText('KÄMPE ESTATES',pad,top+52);ctx.letterSpacing='0px';
 }
 
 // ---------- MAIN DRAW ----------
 function sceneAt(gt){let acc=0;for(let i=0;i<SCENES.length;i++){if(gt<acc+SCENES[i].dur)return{i,local:gt-acc,dur:SCENES[i].dur,id:SCENES[i].id};acc+=SCENES[i].dur;}const L=SCENES.length-1;return{i:L,local:SCENES[L].dur,dur:SCENES[L].dur,id:SCENES[L].id};}
 
-const KEY='#FF00FF'; // chroma key color — removed in CapCut so your footage shows through
+// TRANSPARENT title cards: only text/wordmark/caption on a clear canvas
+// (for overlaying on your own footage in CapCut — no background, no chroma).
 function draw(gt){
+  ctx.clearRect(0,0,W,H);
   const s=sceneAt(gt);
-  if(s.id==='cta'){ ctaScene(s.local,s.dur); }        // CTA stays a solid branded green card
-  else { ctx.fillStyle=KEY; ctx.fillRect(0,0,W,H); }  // scenes 1-4: flat key color (your footage goes here)
-  // text / graphics on top
-  if(s.id!=='cta')progressBar(gt);
+  if(s.id==='cta')return; // CTA is delivered as the separate outro video
+  // wordmark, with a soft shadow so it reads on any footage
+  ctx.fillStyle='rgba(251,251,248,0.92)';setFont('normal',500,24,INTER);ctx.textAlign='left';ctx.letterSpacing='7px';
+  ctx.shadowColor='rgba(0,0,0,0.55)';ctx.shadowBlur=12;ctx.shadowOffsetY=1;
+  ctx.fillText('KÄMPE ESTATES',28,82);ctx.letterSpacing='0px';
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
   textForScene(s.id,s.local,s.dur);
-  if(s.id==='cta')progressBar(gt);
-  // closing fade for the CTA card only (green -> stays keyable-free)
-  if(gt>TOTAL-0.5){const f=(gt-(TOTAL-0.5))/0.5;ctx.fillStyle='rgba(38,51,42,'+clamp(f,0,1)+')';ctx.fillRect(0,0,W,H);}
 }
 
 // ---------- AUDIO SCORE ----------

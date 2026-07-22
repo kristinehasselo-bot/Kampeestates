@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Outro renderer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const W=1080,H=1920, cv=document.getElementById('c'), ctx=cv.getContext('2d',{alpha:false});
+const CREAM='#FBFBF8', CYPRESS='#36463B';
+const CORM='"Cormorant Garamond", Georgia, serif', INTER='"Inter", system-ui, sans-serif';
+const TOTAL=6.0;
+const smooth=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// grain tile
+const grain=document.createElement('canvas');grain.width=grain.height=256;
+(()=>{const g=grain.getContext('2d');const im=g.createImageData(256,256);for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}g.putImageData(im,0,0);})();
+
+function setFont(s,w,sz,f){ctx.font=`${s} ${w} ${sz}px ${f}`;}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function draw(t){
+  // background
+  ctx.fillStyle=CYPRESS;ctx.fillRect(0,0,W,H);
+  const g=ctx.createRadialGradient(W/2,H*0.44,40,W/2,H*0.5,820);
+  g.addColorStop(0,'rgba(120,140,120,0.30)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // vignette
+  const v=ctx.createRadialGradient(W/2,H*0.5,H*0.25,W/2,H*0.55,H*0.75);
+  v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,0.42)');
+  ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+
+  const aMark=smooth((t-0.2)/0.7);
+  const aDom =smooth((t-0.7)/0.8);
+  const aSub =smooth((t-1.4)/0.8);
+  const rise=(a)=>(1-a)*14;
+
+  ctx.textAlign='center';
+  // wordmark
+  ctx.globalAlpha=aMark;ctx.fillStyle='rgba(251,251,248,0.8)';
+  setFont('normal',500,30,INTER);ctx.letterSpacing='10px';
+  ctx.fillText('KÄMPE ESTATES',W/2,H*0.38);ctx.letterSpacing='0px';
+  // rule
+  ctx.fillStyle='rgba(251,251,248,0.45)';ctx.fillRect(W/2-24,H*0.41,48,2);
+
+  // "Read more at"
+  ctx.globalAlpha=aDom;ctx.fillStyle='rgba(251,251,248,0.82)';
+  setFont('normal',400,34,INTER);ctx.letterSpacing='2px';
+  ctx.fillText('Read more at',W/2,H*0.485+rise(aDom));ctx.letterSpacing='0px';
+  // domain (hero)
+  ctx.fillStyle=CREAM;ctx.shadowColor='rgba(0,0,0,0.35)';ctx.shadowBlur=24;ctx.shadowOffsetY=2;
+  setFont('normal',500,104,CORM);
+  ctx.fillText('kampeestates.com',W/2,H*0.575+rise(aDom));
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+
+  // pill
+  ctx.globalAlpha=aSub;
+  const pt='BUYER-SIDE ONLY · TUSCANY';setFont('normal',500,26,INTER);ctx.letterSpacing='4px';
+  const pw=ctx.measureText(pt).width+64;
+  ctx.fillStyle=CREAM;roundRect(W/2-pw/2,H*0.635,pw,64,32);ctx.fill();
+  ctx.fillStyle='#26332a';ctx.fillText(pt,W/2,H*0.635+42);ctx.letterSpacing='0px';
+  ctx.globalAlpha=1;
+
+  // grain
+  ctx.globalAlpha=0.045;ctx.globalCompositeOperation='overlay';
+  const ox=Math.random()*256,oy=Math.random()*256;
+  for(let x=-256;x<W;x+=256)for(let y=-256;y<H;y+=256)ctx.drawImage(grain,x-ox,y-oy);
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+
+  // open/close fade
+  let f=0;
+  if(t<0.5)f=1-t/0.5;
+  if(t>TOTAL-0.7)f=Math.max(f,(t-(TOTAL-0.7))/0.7);
+  if(f>0){ctx.fillStyle='rgba(38,51,42,'+clamp(f,0,1)+')';ctx.fillRect(0,0,W,H);}
+}
+
+// ---- audio: short warm resolving sting ----
+let ac,master,dest;
+function buildAudio(){
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createGain();master.gain.value=0.0001;
+  const comp=ac.createDynamicsCompressor();dest=ac.createMediaStreamDestination();
+  master.connect(comp);comp.connect(dest);comp.connect(ac.destination);
+  const now=ac.currentTime;
+  master.gain.setValueAtTime(0.0001,now);
+  master.gain.exponentialRampToValueAtTime(0.9,now+1.2);
+  master.gain.setValueAtTime(0.9,now+TOTAL-1.6);
+  master.gain.exponentialRampToValueAtTime(0.0001,now+TOTAL-0.1);
+  // drone
+  [55,110].forEach((f,i)=>{const o=ac.createOscillator();o.type=i?'triangle':'sine';o.frequency.value=f;const g=ac.createGain();g.gain.value=i?0.05:0.07;const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;o.connect(g).connect(lp).connect(master);o.start(now);o.stop(now+TOTAL);});
+  // warm chord A C E B
+  [220,261.63,329.63,493.88].forEach((f,i)=>{const o=ac.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=(i-1.5)*5;const g=ac.createGain();g.gain.value=0.02;const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=760;lp.Q.value=5;o.connect(g).connect(lp).connect(master);o.start(now);o.stop(now+TOTAL);});
+  // two resolving bells
+  [[440,1.0],[659.25,2.2]].forEach(([f,st])=>{const o=ac.createOscillator();o.type='sine';o.frequency.value=f;const o2=ac.createOscillator();o2.type='sine';o2.frequency.value=f*2;const g=ac.createGain();const g2=ac.createGain();const s=now+st;
+    g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.12,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+1.8);
+    g2.gain.setValueAtTime(0.0001,s);g2.gain.exponentialRampToValueAtTime(0.035,s+0.02);g2.gain.exponentialRampToValueAtTime(0.0001,s+1.1);
+    o.connect(g).connect(master);o2.connect(g2).connect(master);o.start(s);o.stop(s+2);o2.start(s);o2.stop(s+1.2);});
+}
+
+async function run(){
+  try{await Promise.all([document.fonts.load('500 104px "Cormorant Garamond"'),document.fonts.load('500 30px "Inter"'),document.fonts.load('400 34px "Inter"')]);}catch(e){}
+  await document.fonts.ready;
+  buildAudio();await ac.resume();
+  const vs=cv.captureStream(30);
+  const stream=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
+  let mime='video/webm;codecs=vp8,opus';if(!MediaRecorder.isTypeSupported(mime))mime='video/webm';
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:128000});
+  const chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  const stopped=new Promise(r=>rec.onstop=r);rec.start(200);
+  const t0=performance.now();
+  await new Promise(res=>{function fr(){const t=(performance.now()-t0)/1000;draw(Math.min(t,TOTAL));if(t>=TOTAL){res();return;}requestAnimationFrame(fr);}requestAnimationFrame(fr);});
+  rec.stop();await stopped;
+  const buf=new Uint8Array(await new Blob(chunks,{type:mime}).arrayBuffer());
+  let bin='';for(let i=0;i<buf.length;i++)bin+=String.fromCharCode(buf[i]);
+  window.__reelB64=btoa(bin);window.__reelDone=true;
+}
+window.__startReel=run;
+window.__preload=async()=>{try{await Promise.all([document.fonts.load('500 104px "Cormorant Garamond"'),document.fonts.load('500 30px "Inter"')]);}catch(e){}await document.fonts.ready;return 1;};
+window.__drawAt=(t)=>draw(t);
+</script>
+</body>
+</html>
