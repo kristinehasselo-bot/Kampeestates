@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Reel sequence renderer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="/ffmpeg/ffmpeg.min.js"></script>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const W=1080,H=1920, cv=document.getElementById('c'), ctx=cv.getContext('2d',{alpha:false});
+const CREAM='#FBFBF8', CYPRESS='#36463B';
+const CORM='"Cormorant Garamond", Georgia, serif', INTER='"Inter", system-ui, sans-serif';
+const FPS=30;
+const SCENES=[
+  {id:'rooftops', clip:'scene1', dur:6.5},
+  {id:'stone',    clip:'scene2', dur:7.0},
+  {id:'cypress',  clip:'scene3', dur:8.5},
+  {id:'view',     clip:'scene4', dur:4.5},
+  {id:'cta',      clip:null,     dur:4.0},
+];
+const TOTAL=SCENES.reduce((a,s)=>a+s.dur,0);
+const FADE=0.4;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const smooth=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// grain tile
+const grain=document.createElement('canvas');grain.width=grain.height=256;
+(()=>{const g=grain.getContext('2d');const im=g.createImageData(256,256);for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}g.putImageData(im,0,0);})();
+let _grainFrame=0;
+function drawGrain(a){ctx.globalAlpha=a;ctx.globalCompositeOperation='overlay';const ox=((_grainFrame*57)%256),oy=((_grainFrame*97)%256);_grainFrame++;for(let x=-256;x<W;x+=256)for(let y=-256;y<H;y+=256)ctx.drawImage(grain,x-ox,y-oy);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;}
+function vignette(s){const g=ctx.createRadialGradient(W/2,H*0.42,H*0.2,W/2,H*0.55,H*0.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,'+s+')');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
+function setFont(s,w,sz,f){ctx.font=`${s} ${w} ${sz}px ${f}`;}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// ---------- videos ----------
+const vids={};
+function setupVideos(){
+  return Promise.all(SCENES.filter(s=>s.clip).map(s=>new Promise(res=>{
+    const v=document.createElement('video');
+    v.src='clips/'+s.clip+'.webm';v.muted=true;v.playsInline=true;v.preload='auto';
+    v.style.position='absolute';v.style.left='-9999px';document.body.appendChild(v);vids[s.clip]=v;
+    v.addEventListener('loadeddata',()=>res(),{once:true});
+    v.addEventListener('error',()=>res(),{once:true});
+    setTimeout(res,8000);
+  })));
+}
+function seekVideo(clip,t){
+  return new Promise(res=>{
+    const v=vids[clip]; if(!v){res();return;}
+    let tt=t; if(v.duration&&isFinite(v.duration)&&v.duration>0.1){tt=t%v.duration;}
+    if(Math.abs(v.currentTime-tt)<0.001){res();return;}
+    let done=false; const ok=()=>{if(done)return;done=true;res();};
+    v.addEventListener('seeked',ok,{once:true});
+    try{v.currentTime=tt;}catch(e){ok();}
+    setTimeout(ok,200);
+  });
+}
+
+function drawFootage(id){
+  const clip=SCENES.find(s=>s.id===id).clip;
+  const v=vids[clip];
+  if(v&&v.readyState>=2){ctx.drawImage(v,0,0,W,H);}
+  else{ctx.fillStyle='#0b0c0b';ctx.fillRect(0,0,W,H);}
+  let tg=ctx.createLinearGradient(0,0,0,H*0.16);tg.addColorStop(0,'rgba(0,0,0,0.40)');tg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=tg;ctx.fillRect(0,0,W,H*0.16);
+  let bg=ctx.createLinearGradient(0,H*0.46,0,H);bg.addColorStop(0,'rgba(0,0,0,0)');bg.addColorStop(0.55,'rgba(0,0,0,0.26)');bg.addColorStop(1,'rgba(0,0,0,0.62)');ctx.fillStyle=bg;ctx.fillRect(0,H*0.46,W,H*0.54);
+  vignette(0.32);
+}
+function ctaScene(){
+  ctx.fillStyle=CYPRESS;ctx.fillRect(0,0,W,H);
+  const g=ctx.createRadialGradient(W/2,H*0.42,40,W/2,H*0.5,800);g.addColorStop(0,'rgba(120,140,120,0.28)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  vignette(0.5);
+}
+
+// ---------- text ----------
+function shadowOn(){ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=18;ctx.shadowOffsetY=2;}
+function shadowOff(){ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;}
+function rev(tl,ts){return smooth((tl-ts)/0.8);}
+function eyebrow(text,x,y,alpha){ctx.globalAlpha=alpha;ctx.fillStyle=CREAM;setFont('normal',500,26,INTER);ctx.letterSpacing='6px';ctx.textAlign='left';shadowOn();ctx.fillRect(x,y-9,44,3);ctx.fillText(text.toUpperCase(),x+60,y);shadowOff();ctx.letterSpacing='0px';ctx.globalAlpha=1;}
+
+// subtitle that reveals word-by-word (like speech), fixed centered layout
+function subtitle(text,tl,dur,startAt){
+  const per=0.24;                 // seconds per word
+  const gone=tl-startAt;
+  if(gone<-0.1)return;
+  const outA = tl>dur-0.5 ? smooth((dur-tl)/0.5) : 1;   // fade out near scene end
+  // wrap (fixed layout using all words)
+  setFont('normal',400,32,INTER);ctx.letterSpacing='0px';
+  const spaceW=ctx.measureText(' ').width;
+  const words=text.split(' ').map(w=>({w,ww:ctx.measureText(w).width}));
+  const maxW=W-150;const lines=[];let cur=[],curW=0;
+  words.forEach(o=>{const add=(cur.length?spaceW:0)+o.ww;if(curW+add>maxW&&cur.length){lines.push({words:cur,width:curW});cur=[];curW=0;}curW+=(cur.length?spaceW:0)+o.ww;cur.push(o);});
+  if(cur.length)lines.push({words:cur,width:curW});
+  const lh=46, last=H-104, first=last-(lines.length-1)*lh;
+  // scrim (appears with the subtitle)
+  const scrimA=clamp(gone/0.4,0,1)*outA;
+  const sg=ctx.createLinearGradient(0,H*0.60,0,H);sg.addColorStop(0,'rgba(0,0,0,0)');sg.addColorStop(1,'rgba(0,0,0,0.62)');
+  ctx.globalAlpha=scrimA;ctx.fillStyle=sg;ctx.fillRect(0,H*0.60,W,H*0.40);ctx.globalAlpha=1;
+  ctx.fillStyle=CREAM;ctx.textAlign='left';ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=10;
+  let gi=0;
+  lines.forEach((ln,li)=>{
+    let x=(W-ln.width)/2; const y=first+li*lh;
+    ln.words.forEach((o,wi)=>{
+      const wa=clamp(gone/per - gi,0,1)*outA;   // this word's fade-in
+      if(wa>0.003){ctx.globalAlpha=wa;ctx.fillText(o.w,x,y);}
+      x+=o.ww+spaceW; gi++;
+    });
+  });
+  ctx.globalAlpha=1;ctx.shadowColor='transparent';ctx.shadowBlur=0;
+}
+
+function textForScene(id,tl,dur){
+  if(id==='rooftops'){
+    const a1=rev(tl,0.2),a2=rev(tl,0.7);
+    eyebrow('Buying in Tuscany',80,H-474,a1);
+    shadowOn();ctx.fillStyle=CREAM;setFont('normal',500,92,CORM);ctx.textAlign='left';
+    ctx.globalAlpha=a1;ctx.fillText('The asking price',80,H-404);
+    ctx.globalAlpha=a2;setFont('italic',500,92,CORM);ctx.fillText('is never the price.',80,H-300);
+    ctx.globalAlpha=1;shadowOff();
+    subtitle('You see the view. The light, the stone, four hundred years of it.',tl,dur,1.0);
+  }
+  else if(id==='stone'){
+    const a=rev(tl,0.3);const cx=80,cy=H-720,cw=580;
+    ctx.globalAlpha=a;ctx.fillStyle='rgba(11,12,11,0.5)';ctx.fillRect(cx,cy,cw,330);ctx.fillStyle=CREAM;ctx.fillRect(cx,cy,4,330);
+    setFont('italic',500,40,CORM);ctx.textAlign='left';ctx.fillStyle='rgba(251,251,248,0.9)';ctx.fillText('seconda casa · second home',cx+40,cy+80);
+    shadowOn();ctx.fillStyle=CREAM;setFont('normal',600,150,CORM);ctx.fillText('9%',cx+40,cy+215);shadowOff();
+    setFont('normal',400,30,INTER);ctx.fillStyle='rgba(251,251,248,0.82)';ctx.fillText('transfer tax alone. Not two.',cx+40,cy+275);
+    ctx.globalAlpha=1;
+    subtitle('Here is the part no one shows you. On a second home, the transfer tax alone is nine percent. Not two.',tl,dur,1.0);
+  }
+  else if(id==='cypress'){
+    // three cost words fade in one by one
+    eyebrow('The cost no one budgets for',80,H-560,rev(tl,0.2));
+    const words=['Notary','Geometra','Agency'];const ys=[H-470,H-380,H-290];
+    shadowOn();setFont('normal',500,80,CORM);ctx.textAlign='left';ctx.fillStyle=CREAM;
+    words.forEach((w,i)=>{const a=rev(tl,0.6+i*0.55);ctx.globalAlpha=a;ctx.fillText(w,80,ys[i]+(1-a)*10);});
+    ctx.globalAlpha=1;shadowOff();
+    subtitle('Total acquisition cost runs ten to fifteen percent above asking. Every time.',tl,dur,2.4);
+  }
+  else if(id==='view'){
+    const a1=rev(tl,0.2),a2=rev(tl,0.7);
+    shadowOn();ctx.fillStyle=CREAM;setFont('normal',500,84,CORM);ctx.textAlign='left';
+    ctx.globalAlpha=a1;ctx.fillText('We say so before you',80,H-496);ctx.fillText('fall in love.',80,H-398);
+    ctx.globalAlpha=a2;setFont('italic',500,84,CORM);ctx.fillText('Not after.',80,H-300);
+    ctx.globalAlpha=1;shadowOff();
+    subtitle('We represent the buyer only. For those who would rather know than hope.',tl,dur,1.0);
+  }
+  else if(id==='cta'){
+    const a1=rev(tl,0.15),a2=rev(tl,0.6);ctx.textAlign='center';
+    ctx.globalAlpha=a1;ctx.fillStyle='rgba(251,251,248,0.72)';setFont('normal',500,28,INTER);ctx.letterSpacing='9px';
+    ctx.fillText('KÄMPE ESTATES',W/2,H*0.36);ctx.letterSpacing='0px';
+    ctx.fillStyle='rgba(251,251,248,0.5)';ctx.fillRect(W/2-22,H*0.40,44,2);
+    ctx.fillStyle=CREAM;setFont('normal',500,92,CORM);ctx.fillText('Save this',W/2,H*0.50);ctx.fillText('before you start looking.',W/2,H*0.50+96);
+    ctx.globalAlpha=a2;setFont('normal',400,34,INTER);ctx.fillStyle='rgba(251,251,248,0.9)';ctx.fillText('Read more at kampeestates.com',W/2,H*0.50+220);
+    const pt='BUYER-SIDE ONLY · TUSCANY';setFont('normal',500,26,INTER);ctx.letterSpacing='4px';const pw=ctx.measureText(pt).width+64;
+    ctx.fillStyle=CREAM;roundRect(W/2-pw/2,H*0.50+280,pw,64,32);ctx.fill();ctx.fillStyle='#26332a';ctx.fillText(pt,W/2,H*0.50+320);ctx.letterSpacing='0px';
+    ctx.globalAlpha=1;
+  }
+}
+function progressBar(gt){
+  const pad=28,gap=10,top=30,h=6;const n=SCENES.length;const segW=(W-pad*2-gap*(n-1))/n;let acc=0;
+  for(let i=0;i<n;i++){const x=pad+i*(segW+gap);ctx.fillStyle='rgba(251,251,248,0.30)';roundRect(x,top,segW,h,3);ctx.fill();let f=0;const s0=acc,s1=acc+SCENES[i].dur;if(gt>=s1)f=1;else if(gt>s0)f=(gt-s0)/SCENES[i].dur;if(f>0){ctx.fillStyle=CREAM;roundRect(x,top,segW*f,h,3);ctx.fill();}acc=s1;}
+  ctx.fillStyle='rgba(251,251,248,0.9)';setFont('normal',500,24,INTER);ctx.textAlign='left';ctx.letterSpacing='7px';ctx.shadowColor='rgba(0,0,0,0.5)';ctx.shadowBlur=10;ctx.fillText('KÄMPE ESTATES',pad,top+52);ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.letterSpacing='0px';
+}
+function sceneAt(gt){let acc=0;for(let i=0;i<SCENES.length;i++){if(gt<acc+SCENES[i].dur)return{i,local:gt-acc,dur:SCENES[i].dur,id:SCENES[i].id,clip:SCENES[i].clip};acc+=SCENES[i].dur;}const L=SCENES.length-1;return{i:L,local:SCENES[L].dur,dur:SCENES[L].dur,id:SCENES[L].id,clip:SCENES[L].clip};}
+
+function drawComposite(gt){
+  const s=sceneAt(gt);
+  if(s.id==='cta')ctaScene();else drawFootage(s.id);
+  if(s.id!=='cta')progressBar(gt);
+  textForScene(s.id,s.local,s.dur);
+  if(s.id==='cta')progressBar(gt);
+  drawGrain(0.03);
+  let fade=0;
+  if(s.local<FADE&&s.i>0)fade=1-s.local/FADE;
+  else if(s.dur-s.local<FADE&&s.i<SCENES.length-1)fade=1-(s.dur-s.local)/FADE;
+  if(gt<0.5)fade=Math.max(fade,1-gt/0.5);
+  if(gt>TOTAL-0.6)fade=Math.max(fade,(gt-(TOTAL-0.6))/0.6);
+  if(fade>0){ctx.fillStyle='rgba(0,0,0,'+clamp(fade,0,1)+')';ctx.fillRect(0,0,W,H);}
+}
+
+// ---------- COZY ITALIAN SCORE (deterministic, OfflineAudioContext) ----------
+function scheduleScore(ac,dest,total){
+  const master=ac.createGain();master.connect(dest);
+  const t0=0;
+  master.gain.setValueAtTime(0.0001,t0);master.gain.exponentialRampToValueAtTime(0.85,t0+1.6);
+  master.gain.setValueAtTime(0.85,t0+total-1.8);master.gain.exponentialRampToValueAtTime(0.0001,t0+total-0.05);
+  const mf=(m)=>440*Math.pow(2,(m-69)/12);
+  function pluck(freq,time,dur,gain){
+    const o=ac.createOscillator();o.type='triangle';o.frequency.value=freq;
+    const o2=ac.createOscillator();o2.type='sine';o2.frequency.value=freq*2;
+    const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;
+    const g=ac.createGain();g.gain.setValueAtTime(0.0001,time);g.gain.exponentialRampToValueAtTime(gain,time+0.008);g.gain.exponentialRampToValueAtTime(0.0001,time+dur);
+    const g2=ac.createGain();g2.gain.setValueAtTime(0.0001,time);g2.gain.exponentialRampToValueAtTime(gain*0.25,time+0.008);g2.gain.exponentialRampToValueAtTime(0.0001,time+dur*0.6);
+    o.connect(g).connect(lp).connect(master);o2.connect(g2).connect(lp);
+    o.start(time);o.stop(time+dur+0.05);o2.start(time);o2.stop(time+dur*0.6+0.05);
+  }
+  function pad(freqs,time,dur,gain){
+    freqs.forEach((f,i)=>{const o=ac.createOscillator();o.type='sine';o.frequency.value=f;o.detune.value=(i-1)*3;const g=ac.createGain();g.gain.setValueAtTime(0.0001,time);g.gain.linearRampToValueAtTime(gain,time+0.6);g.gain.setValueAtTime(gain,time+dur-0.5);g.gain.linearRampToValueAtTime(0.0001,time+dur);o.connect(g).connect(master);o.start(time);o.stop(time+dur+0.05);});
+  }
+  function bass(freq,time,dur,gain){const o=ac.createOscillator();o.type='sine';o.frequency.value=freq;const g=ac.createGain();g.gain.setValueAtTime(0.0001,time);g.gain.exponentialRampToValueAtTime(gain,time+0.02);g.gain.exponentialRampToValueAtTime(0.0001,time+dur);o.connect(g).connect(master);o.start(time);o.stop(time+dur+0.05);}
+  // warm progression: C - G/B - Am - F  (I - V - vi - IV), 2s per chord
+  const chords=[
+    {notes:[60,64,67],bass:36},   // C
+    {notes:[59,62,67],bass:43},   // G/B
+    {notes:[57,60,64],bass:33},   // Am
+    {notes:[53,57,60],bass:41},   // F
+  ];
+  const bar=2.0, eighth=bar/8;
+  const pat=[0,1,2,1,0,2,1,2];   // gentle fingerpicking
+  let i=0;
+  for(let t=0;t<total-0.2;t+=bar,i++){
+    const ch=chords[i%chords.length];
+    bass(mf(ch.bass),t,bar*0.98,0.10);
+    pad(ch.notes.map(n=>mf(n+12)),t,bar,0.02);
+    for(let j=0;j<8;j++){const time=t+j*eighth;if(time>total-0.15)break;const note=ch.notes[pat[j]]+12;pluck(mf(note),time,0.9,0.11);}
+  }
+}
+async function renderAudioWav(){
+  const len=Math.ceil(44100*(TOTAL+0.2));
+  const oac=new OfflineAudioContext(1,len,44100);
+  scheduleScore(oac,oac.destination,TOTAL);
+  const buf=await oac.startRendering();
+  const d=buf.getChannelData(0);const n=d.length;
+  const bytes=44+n*2;const ab=new ArrayBuffer(bytes);const dv=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF');dv.setUint32(4,36+n*2,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,44100,true);dv.setUint32(28,44100*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,n*2,true);
+  let o=44;for(let i=0;i<n;i++){let s=Math.max(-1,Math.min(1,d[i]));dv.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);o+=2;}
+  return new Uint8Array(ab);
+}
+
+// ---------- PRODUCE: deterministic frames -> ffmpeg -> mp4 ----------
+function canvasJpeg(q){return new Promise(res=>cv.toBlob(async b=>res(new Uint8Array(await b.arrayBuffer())),'image/jpeg',q));}
+const pad4=n=>String(n).padStart(4,'0');
+window.__log=[];
+async function produce(){
+  await Promise.all([document.fonts.load('500 92px "Cormorant Garamond"'),document.fonts.load('italic 500 92px "Cormorant Garamond"'),document.fonts.load('600 150px "Cormorant Garamond"'),document.fonts.load('500 26px "Inter"'),document.fonts.load('400 32px "Inter"')]);
+  await document.fonts.ready;
+  await setupVideos();
+  const ffmpeg=FFmpeg.createFFmpeg({corePath:location.origin+'/core/ffmpeg-core.js',log:true});
+  ffmpeg.setLogger(({message})=>{window.__log.push(message);});
+  await ffmpeg.load();
+  // audio
+  ffmpeg.FS('writeFile','audio.wav', await renderAudioWav());
+  window.__progress='audio ok';
+  const sceneMp4=[];
+  let acc=0;
+  for(let si=0;si<SCENES.length;si++){
+    const sc=SCENES[si];const nf=Math.round(sc.dur*FPS);
+    for(let f=0;f<nf;f++){
+      const gt=acc + f/FPS;
+      if(sc.clip){await seekVideo(sc.clip, gt-acc);}
+      drawComposite(gt);
+      const jpg=await canvasJpeg(0.92);
+      ffmpeg.FS('writeFile','f'+pad4(f)+'.jpg',jpg);
+    }
+    await ffmpeg.run('-framerate',String(FPS),'-i','f%04d.jpg','-c:v','libx264','-preset','veryfast','-crf','21','-pix_fmt','yuv420p','scene'+si+'.mp4');
+    for(let f=0;f<nf;f++){try{ffmpeg.FS('unlink','f'+pad4(f)+'.jpg');}catch(e){}}
+    sceneMp4.push('scene'+si+'.mp4');
+    acc+=sc.dur;
+    window.__progress='scene '+(si+1)+'/'+SCENES.length+' encoded';
+  }
+  ffmpeg.FS('writeFile','list.txt', new TextEncoder().encode(sceneMp4.map(f=>"file '"+f+"'").join('\n')+'\n'));
+  await ffmpeg.run('-f','concat','-safe','0','-i','list.txt','-i','audio.wav','-map','0:v','-map','1:a','-c:v','copy','-c:a','aac','-b:a','160k','-shortest','-movflags','+faststart','final.mp4');
+  const data=ffmpeg.FS('readFile','final.mp4');
+  let bin='';const CH=0x8000;for(let i=0;i<data.length;i+=CH)bin+=String.fromCharCode.apply(null,data.subarray(i,i+CH));
+  window.__mp4=btoa(bin);window.__done=true;window.__progress='done '+data.length;
+  return data.length;
+}
+window.__produce=produce;
+// QA hook
+window.__preview=async(gt)=>{await Promise.all([document.fonts.load('500 92px "Cormorant Garamond"'),document.fonts.load('400 32px "Inter"')]);await document.fonts.ready;await setupVideos();const s=sceneAt(gt);if(s.clip)await seekVideo(s.clip,gt-(function(){let a=0;for(const x of SCENES){if(x.id===s.id)return a;a+=x.dur;}return 0;})());drawComposite(gt);return 1;};
+</script>
+</body>
+</html>
