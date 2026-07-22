@@ -11,6 +11,8 @@
 <canvas id="c" width="1080" height="1920"></canvas>
 <script>
 const W=1080,H=1920, cv=document.getElementById('c'), ctx=cv.getContext('2d',{alpha:false});
+// downscale target (encode at 720x1280 for speed; text stays crisp via supersampling)
+const SW=720,SH=1280; const sm=document.createElement('canvas');sm.width=SW;sm.height=SH;const smx=sm.getContext('2d');smx.imageSmoothingQuality='high';
 const CREAM='#FBFBF8', CYPRESS='#36463B';
 const CORM='"Cormorant Garamond", Georgia, serif', INTER='"Inter", system-ui, sans-serif';
 const FPS=30;
@@ -233,41 +235,33 @@ async function renderAudioWav(){
 }
 
 // ---------- PRODUCE: deterministic frames -> ffmpeg -> mp4 ----------
-function canvasJpeg(q){return new Promise(res=>cv.toBlob(async b=>res(new Uint8Array(await b.arrayBuffer())),'image/jpeg',q));}
-const pad4=n=>String(n).padStart(4,'0');
+function canvasJpeg(q){smx.drawImage(cv,0,0,SW,SH);return new Promise(res=>sm.toBlob(async b=>res(new Uint8Array(await b.arrayBuffer())),'image/jpeg',q));}
+const pad5=n=>String(n).padStart(5,'0');
+function b64of(u){let s='';const CH=0x8000;for(let i=0;i<u.length;i+=CH)s+=String.fromCharCode.apply(null,u.subarray(i,i+CH));return btoa(s);}
 window.__log=[];
 async function produce(){
   await Promise.all([document.fonts.load('500 92px "Cormorant Garamond"'),document.fonts.load('italic 500 92px "Cormorant Garamond"'),document.fonts.load('600 150px "Cormorant Garamond"'),document.fonts.load('500 26px "Inter"'),document.fonts.load('400 32px "Inter"')]);
   await document.fonts.ready;
   await setupVideos();
+  // expose the score wav for the separate mux step
+  window.__wavB64=b64of(await renderAudioWav());
   const ffmpeg=FFmpeg.createFFmpeg({corePath:location.origin+'/core/ffmpeg-core.js',log:true});
-  ffmpeg.setLogger(({message})=>{window.__log.push(message);});
+  ffmpeg.setLogger(({message})=>{window.__log.push(message);if(/frame=/.test(message))window.__progress=message;});
   await ffmpeg.load();
-  // audio
-  ffmpeg.FS('writeFile','audio.wav', await renderAudioWav());
-  window.__progress='audio ok';
-  const sceneMp4=[];
-  let acc=0;
-  for(let si=0;si<SCENES.length;si++){
-    const sc=SCENES[si];const nf=Math.round(sc.dur*FPS);
-    for(let f=0;f<nf;f++){
-      const gt=acc + f/FPS;
-      if(sc.clip){await seekVideo(sc.clip, gt-acc);}
-      drawComposite(gt);
-      const jpg=await canvasJpeg(0.92);
-      ffmpeg.FS('writeFile','f'+pad4(f)+'.jpg',jpg);
-    }
-    await ffmpeg.run('-framerate',String(FPS),'-i','f%04d.jpg','-c:v','libx264','-preset','veryfast','-crf','21','-pix_fmt','yuv420p','scene'+si+'.mp4');
-    for(let f=0;f<nf;f++){try{ffmpeg.FS('unlink','f'+pad4(f)+'.jpg');}catch(e){}}
-    sceneMp4.push('scene'+si+'.mp4');
-    acc+=sc.dur;
-    window.__progress='scene '+(si+1)+'/'+SCENES.length+' encoded';
+  const N=Math.round(TOTAL*FPS);
+  for(let gi=0; gi<N; gi++){
+    const gt=gi/FPS;
+    const s=sceneAt(gt);
+    if(s.clip){await seekVideo(s.clip, s.local);}
+    drawComposite(gt);
+    ffmpeg.FS('writeFile','f'+pad5(gi)+'.jpg', await canvasJpeg(0.86));
+    if(gi%45===0) window.__progress='captured '+gi+'/'+N;
   }
-  ffmpeg.FS('writeFile','list.txt', new TextEncoder().encode(sceneMp4.map(f=>"file '"+f+"'").join('\n')+'\n'));
-  await ffmpeg.run('-f','concat','-safe','0','-i','list.txt','-i','audio.wav','-map','0:v','-map','1:a','-c:v','copy','-c:a','aac','-b:a','160k','-shortest','-movflags','+faststart','final.mp4');
-  const data=ffmpeg.FS('readFile','final.mp4');
-  let bin='';const CH=0x8000;for(let i=0;i<data.length;i+=CH)bin+=String.fromCharCode.apply(null,data.subarray(i,i+CH));
-  window.__mp4=btoa(bin);window.__done=true;window.__progress='done '+data.length;
+  window.__progress='encoding '+N+' frames...';
+  // one run only: image sequence -> H.264 (video only). Audio muxed in a separate process.
+  await ffmpeg.run('-framerate',String(FPS),'-i','f%05d.jpg','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','-an','silent.mp4');
+  const data=ffmpeg.FS('readFile','silent.mp4');
+  window.__silentB64=b64of(data);window.__done=true;window.__progress='silent done '+data.length;
   return data.length;
 }
 window.__produce=produce;
